@@ -124,7 +124,7 @@ RSpec.describe SOT::MutationService do
       )
     end
 
-    it 'updates data' do
+    it 'merges data by default (preserves unmentioned fields)' do
       result = described_class.update(
         record: record,
         data: { 'title' => 'Updated' },
@@ -132,6 +132,30 @@ RSpec.describe SOT::MutationService do
       )
       expect(result.parsed_data['title']).to eq('Updated')
       expect(result.updated_by).to eq(user2.id)
+    end
+
+    it 'removes fields set to null during merge' do
+      record_with_count = described_class.create(
+        schema: stateful_schema,
+        data: { 'title' => 'Test', 'count' => '5' },
+        user: user
+      )
+      result = described_class.update(
+        record: record_with_count,
+        data: { 'count' => nil },
+        user: user
+      )
+      expect(result.parsed_data).to eq({ 'title' => 'Test' })
+    end
+
+    it 'replaces data entirely when replace_data is true' do
+      result = described_class.update(
+        record: record,
+        data: { 'title' => 'Replaced' },
+        replace_data: true,
+        user: user2
+      )
+      expect(result.parsed_data).to eq({ 'title' => 'Replaced' })
     end
 
     it 'updates state' do

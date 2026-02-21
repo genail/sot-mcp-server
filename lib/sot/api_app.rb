@@ -96,7 +96,8 @@ module SOT
         data: data['data'],
         state: data['state'],
         preconditions: data['preconditions'],
-        user: current_user
+        user: current_user,
+        replace_data: data['replace_data'] || false
       )
 
       json(record: serialize_record(updated))

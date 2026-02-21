@@ -44,11 +44,22 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
       SOT::MutationService.create(schema: schema, data: { 'title' => 'Original' }, state: 'open', user: user)
     end
 
-    it 'updates a record' do
+    it 'merges data by default' do
+      SOT::MutationService.update(record: record, data: { 'title' => 'Original', 'count' => '3' }, user: user, replace_data: true)
       response = call_tool(described_class, user: user,
                            action: 'update', record_id: record.id, data: { 'title' => 'Updated' })
       expect(response_error?(response)).to be false
-      expect(response_text(response)).to include('Updated')
+      refreshed = SOT::Record[record.id]
+      expect(refreshed.parsed_data['title']).to eq('Updated')
+      expect(refreshed.parsed_data['count']).to eq('3')
+    end
+
+    it 'replaces data when replace_data is true' do
+      response = call_tool(described_class, user: user,
+                           action: 'update', record_id: record.id,
+                           data: { 'title' => 'Replaced' }, replace_data: true)
+      expect(response_error?(response)).to be false
+      expect(response_text(response)).to include('Replaced')
     end
 
     it 'updates with passing preconditions' do

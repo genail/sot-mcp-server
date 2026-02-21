@@ -5,11 +5,12 @@ module SOT
         tool_name 'sot_query'
 
         description <<~DESC
-          Query records of a specific entity type.
+          Query records of a specific entity type, or fetch a single record by ID.
           Use sot_list_entities first to discover available entity types and their field names.
 
           Parameters:
           - entity (required): The entity type name, e.g., "org.locks" or just "locks"
+          - record_id: Fetch a specific record by ID (returns one record, ignores filters/pagination)
           - filters: Hash of field_name => value for exact match filtering
           - state: Filter by current state
           - limit: Max records to return (default 100)
@@ -21,6 +22,7 @@ module SOT
         input_schema(
           properties: {
             entity: { type: 'string', description: 'Entity type name, e.g. "org.locks"' },
+            record_id: { type: 'integer', description: 'Fetch a single record by ID' },
             filters: {
               type: 'object',
               description: 'Key-value pairs to filter by (exact match on data fields)',
@@ -38,6 +40,19 @@ module SOT
           unless schema
             return error_response("Entity type '#{params[:entity]}' not found.",
                                   hint: 'Use sot_list_entities to see available entity types.')
+          end
+
+          # Single record lookup by ID
+          if params[:record_id]
+            record = SOT::QueryService.find(schema, params[:record_id])
+            unless record
+              return error_response("Record ##{params[:record_id]} not found in #{schema.full_name}.")
+            end
+            state_info = record.state ? " [#{record.state}]" : ''
+            return MCP::Tool::Response.new([{
+              type: 'text',
+              text: "Record ##{record.id}#{state_info}: #{record.data}"
+            }])
           end
 
           filters = params[:filters] || {}

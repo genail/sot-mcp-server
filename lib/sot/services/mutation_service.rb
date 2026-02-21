@@ -43,11 +43,11 @@ module SOT
       record
     end
 
-    def self.update(record:, data: nil, state: nil, preconditions: {}, user:)
+    def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false)
       schema = record.schema
 
       raise ValidationError, "Cannot set state on a stateless entity type" if state && !schema.stateful?
-      validate_data!(schema, data) if data
+      raise ValidationError, "data must be a Hash" if data && !data.is_a?(Hash)
       validate_state!(schema, state) if state
 
       DB.transaction(mode: :immediate) do
@@ -60,12 +60,23 @@ module SOT
         before_data = fresh.parsed_data
         before_state = fresh.state
 
+        resolved_data = nil
         updates = { updated_by: user.id }
-        updates[:data] = JSON.generate(data) if data
+        if data
+          resolved_data = if replace_data
+                            data
+                          else
+                            m = before_data.merge(data)
+                            m.reject! { |_, v| v.nil? }
+                            m
+                          end
+          validate_data!(schema, resolved_data)
+          updates[:data] = JSON.generate(resolved_data)
+        end
         updates[:state] = state if state
         fresh.update(updates)
 
-        after_data = data || before_data
+        after_data = resolved_data || before_data
         after_state = state || before_state
 
         ActivityLog.create(

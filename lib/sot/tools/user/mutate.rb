@@ -10,6 +10,8 @@ module SOT
           Actions:
           - create: New record. Requires entity and data. State defaults to first defined state for stateful entities.
           - update: Update existing record. Requires record_id. Provide data and/or state to change.
+            Data is MERGED into the existing record — only the fields you provide are changed.
+            To remove a field, set it to null. To fully replace all data, set replace_data to true.
           - delete: Delete a record. Requires record_id.
 
           Preconditions (for update/delete):
@@ -48,6 +50,10 @@ module SOT
               type: 'object',
               description: 'Expected current values for compare-and-swap (optional for update/delete)',
               additionalProperties: true
+            },
+            replace_data: {
+              type: 'boolean',
+              description: 'If true, data fully replaces existing data instead of merging (default false)'
             }
           },
           required: ['action']
@@ -103,7 +109,8 @@ module SOT
             data: params[:data],
             state: params[:state],
             preconditions: params[:preconditions] || {},
-            user: user
+            user: user,
+            replace_data: params[:replace_data] || false
           )
 
           state_info = result.state ? " [#{result.state}]" : ''

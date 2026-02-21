@@ -51,5 +51,19 @@ RSpec.describe SOT::Tools::User::Query, type: :tool do
       text = response_text(response)
       expect(text).to include('No records found')
     end
+
+    it 'fetches a single record by ID' do
+      record = SOT::Record.order(:id).first
+      response = call_tool(described_class, user: user, entity: 'org.locks', record_id: record.id)
+      text = response_text(response)
+      expect(text).to include("Record ##{record.id}")
+      expect(text).to include('Alpha')
+    end
+
+    it 'returns error for unknown record ID' do
+      response = call_tool(described_class, user: user, entity: 'org.locks', record_id: 99999)
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('not found')
+    end
   end
 end
