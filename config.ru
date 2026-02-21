@@ -7,6 +7,7 @@ USER_TOOLS = [
   SOT::Tools::User::ActivityLogTool,
   SOT::Tools::User::FeedbackTool,
   SOT::Tools::User::ListUsers,
+  SOT::Tools::User::Whoami,
 ].freeze
 
 ADMIN_TOOLS = [
