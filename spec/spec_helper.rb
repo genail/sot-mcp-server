@@ -41,6 +41,7 @@ require_relative '../lib/sot/middleware/admin_gate'
 # Load apps
 require_relative '../lib/sot/rack_mcp_app'
 require_relative '../lib/sot/api_app'
+require_relative '../lib/sot/install_app'
 
 # Load support files
 Dir[File.join(__dir__, 'support', '**', '*.rb')].sort.each { |f| require f }

@@ -38,3 +38,4 @@ require_relative '../lib/sot/middleware/admin_gate'
 # Rack apps
 require_relative '../lib/sot/rack_mcp_app'
 require_relative '../lib/sot/api_app'
+require_relative '../lib/sot/install_app'
