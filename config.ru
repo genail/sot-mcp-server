@@ -6,6 +6,7 @@ USER_TOOLS = [
   SOT::Tools::User::Mutate,
   SOT::Tools::User::ActivityLogTool,
   SOT::Tools::User::FeedbackTool,
+  SOT::Tools::User::ListUsers,
 ].freeze
 
 ADMIN_TOOLS = [
