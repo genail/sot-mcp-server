@@ -46,7 +46,7 @@ end
 
 desc 'Start the server'
 task :server do
-  sh 'bundle exec rackup -p 9292'
+  sh 'bundle exec rackup -p 39482'
 end
 
 task default: :spec

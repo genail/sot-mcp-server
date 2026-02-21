@@ -8,8 +8,8 @@ Admin-defined schemas describe entity types with typed fields and optional state
 
 ```bash
 bundle install
-rake server            # starts on port 9292
-curl -X POST http://localhost:9292/install   # creates admin user, returns token
+rake server            # starts on port 39482
+curl -X POST http://localhost:39482/install   # creates admin user, returns token
 ```
 
 Save the token — it won't be shown again. Use it as a Bearer token for all subsequent requests.
@@ -39,7 +39,7 @@ The server exposes Streamable HTTP MCP transport. Both user (`/mcp`) and admin (
 claude mcp add sot-user -- \
   curl -N -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  http://localhost:9292/mcp
+  http://localhost:39482/mcp
 ```
 
 For admin tools:
@@ -48,7 +48,7 @@ For admin tools:
 claude mcp add sot-admin -- \
   curl -N -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  http://localhost:9292/mcp/admin
+  http://localhost:39482/mcp/admin
 ```
 
 ### JSON config
@@ -59,13 +59,13 @@ Add to your MCP client config (e.g. `claude_desktop_config.json`):
 {
   "mcpServers": {
     "sot-user": {
-      "url": "http://localhost:9292/mcp",
+      "url": "http://localhost:39482/mcp",
       "headers": {
         "Authorization": "Bearer <token>"
       }
     },
     "sot-admin": {
-      "url": "http://localhost:9292/mcp/admin",
+      "url": "http://localhost:39482/mcp/admin",
       "headers": {
         "Authorization": "Bearer <token>"
       }

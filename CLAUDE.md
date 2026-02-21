@@ -15,7 +15,7 @@ rake db:seed                            # Create admin user (prints token once)
 rake spec                               # Run all tests (default rake task)
 bundle exec rspec spec/models/user_spec.rb          # Run single test file
 bundle exec rspec spec/models/user_spec.rb:42       # Run single example by line
-rake server                             # Start server on port 9292
+rake server                             # Start server on port 39482
 rake db:create_migration[name]          # Generate new migration file
 rake db:rollback                        # Rollback last migration
 ```
