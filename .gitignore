@@ -1,0 +1,8 @@
+db/*.sqlite3
+.env
+.env.*
+tmp/
+log/
+.bundle/
+vendor/bundle
+*.pid
