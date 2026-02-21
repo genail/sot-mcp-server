@@ -31,40 +31,32 @@ All endpoints (except `/install`) require `Authorization: Bearer <token>`.
 
 ## Connecting as MCP
 
-The server exposes Streamable HTTP MCP transport. Both user (`/mcp`) and admin (`/mcp/admin`) endpoints require a Bearer token.
+The server exposes Streamable HTTP MCP transport on `/mcp` (user tools) and `/mcp/admin` (admin tools). Bearer token auth is required.
 
 ### Claude Code (CLI)
 
 ```bash
-claude mcp add sot-user -- \
-  curl -N -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  http://localhost:39482/mcp
+claude mcp add sot-user -t http http://localhost:39482/mcp \
+  -H "Authorization: Bearer <token>"
+
+claude mcp add sot-admin -t http http://localhost:39482/mcp/admin \
+  -H "Authorization: Bearer <token>"
 ```
 
-For admin tools:
-
-```bash
-claude mcp add sot-admin -- \
-  curl -N -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  http://localhost:39482/mcp/admin
-```
-
-### JSON config
-
-Add to your MCP client config (e.g. `claude_desktop_config.json`):
+### JSON config (`.mcp.json` or `claude mcp add-json`)
 
 ```json
 {
   "mcpServers": {
     "sot-user": {
+      "type": "http",
       "url": "http://localhost:39482/mcp",
       "headers": {
         "Authorization": "Bearer <token>"
       }
     },
     "sot-admin": {
+      "type": "http",
       "url": "http://localhost:39482/mcp/admin",
       "headers": {
         "Authorization": "Bearer <token>"

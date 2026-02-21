@@ -32,6 +32,7 @@ require_relative '../lib/sot/tools/admin/manage_users'
 require_relative '../lib/sot/tools/admin/view_feedback'
 
 # Middleware
+require_relative '../lib/sot/middleware/downcase_headers'
 require_relative '../lib/sot/middleware/token_auth'
 require_relative '../lib/sot/middleware/admin_gate'
 

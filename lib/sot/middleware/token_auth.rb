@@ -1,11 +1,17 @@
 module SOT
   module Middleware
     class TokenAuth
-      def initialize(app)
+      def initialize(app, post_only: false)
         @app = app
+        @post_only = post_only
       end
 
       def call(env)
+        # MCP mode: only authenticate POST requests (let connectivity probes through)
+        if @post_only && env['REQUEST_METHOD'] != 'POST'
+          return @app.call(env)
+        end
+
         token = extract_token(env)
 
         unless token

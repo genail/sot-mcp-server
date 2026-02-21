@@ -15,6 +15,8 @@ ADMIN_TOOLS = [
 ].freeze
 
 app = Rack::Builder.new do
+  use SOT::Middleware::DowncaseHeaders
+
   # Bootstrap — no auth required
   map '/install' do
     run SOT::InstallApp
@@ -22,14 +24,14 @@ app = Rack::Builder.new do
 
   # Admin MCP — more specific path, must come first
   map '/mcp/admin' do
-    use SOT::Middleware::TokenAuth
+    use SOT::Middleware::TokenAuth, post_only: true
     use SOT::Middleware::AdminGate
     run SOT::RackMcpApp.new(tools: ADMIN_TOOLS)
   end
 
   # User MCP
   map '/mcp' do
-    use SOT::Middleware::TokenAuth
+    use SOT::Middleware::TokenAuth, post_only: true
     run SOT::RackMcpApp.new(tools: USER_TOOLS)
   end
 
