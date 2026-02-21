@@ -2,15 +2,11 @@
 
 ## High Severity
 
-### 1. Data replacement on update is silent and destructive
-`sot_mutate` update replaces the entire `data` JSON instead of merging. A user updating one field silently drops all others. The tool description doesn't warn about this.
-- `lib/sot/services/mutation_service.rb:64`
-- `lib/sot/tools/user/mutate.rb`
+### ~~1. Data replacement on update is silent and destructive~~ DONE
+Update now merges by default. Null-to-delete supported. `replace_data: true` for full replacement.
 
-### 2. No fetch-record-by-ID
-`QueryService.find` exists but is never exposed via MCP. A user who knows a record ID (from mutate response or activity log) must query the whole entity type to find it.
-- `lib/sot/services/query_service.rb:30`
-- `lib/sot/tools/user/query.rb`
+### ~~2. No fetch-record-by-ID~~ DONE
+`sot_query` now accepts `record_id` parameter.
 
 ### 3. No way to promote/demote a user
 `UserService.update` exists but `sot_admin_manage_users` has no `update` action. Changing `is_admin` requires delete + recreate, which is blocked by FK constraints if the user has any activity.
