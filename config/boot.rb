@@ -22,7 +22,7 @@ require_relative '../lib/sot/services/user_service'
 
 # MCP Tools
 require 'mcp'
-require_relative '../lib/sot/tools/user/list_entities'
+require_relative '../lib/sot/tools/user/list_tables'
 require_relative '../lib/sot/tools/user/query'
 require_relative '../lib/sot/tools/user/mutate'
 require_relative '../lib/sot/tools/user/activity_log'

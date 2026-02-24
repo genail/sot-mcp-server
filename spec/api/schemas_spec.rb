@@ -5,8 +5,8 @@ RSpec.describe 'GET /api/schemas', type: :api do
   let(:token) { user.last }
 
   before do
-    create(:entity_schema, :stateful, namespace: 'org', name: 'locks')
-    create(:entity_schema, namespace: 'org', name: 'docs')
+    create(:table_schema, :stateful, namespace: 'org', name: 'locks')
+    create(:table_schema, namespace: 'org', name: 'docs')
   end
 
   it 'lists all schemas' do
@@ -19,7 +19,7 @@ RSpec.describe 'GET /api/schemas', type: :api do
   end
 
   it 'filters by namespace' do
-    create(:entity_schema, namespace: 'project', name: 'tasks')
+    create(:table_schema, namespace: 'project', name: 'tasks')
 
     get '/api/schemas', { namespace: 'project' }, auth_header(token)
 

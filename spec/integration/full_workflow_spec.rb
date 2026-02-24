@@ -28,7 +28,7 @@ RSpec.describe 'Full workflow', type: :api do
 
     # Step 2: User creates a record
     post_json '/api/records', {
-      entity: 'org.locks',
+      table: 'org.locks',
       data: { 'resource' => 'staging-db', 'reason' => 'running migration' },
       state: 'locked'
     }, auth_header(user_token)
@@ -57,7 +57,7 @@ RSpec.describe 'Full workflow', type: :api do
     expect(last_response.status).to eq(409)
 
     # Step 6: Check activity log
-    get '/api/activity_log', { entity: 'org.locks' }, auth_header(user_token)
+    get '/api/activity_log', { table: 'org.locks' }, auth_header(user_token)
     expect(last_response.status).to eq(200)
     actions = json_body['entries'].map { |e| e['action'] }
     expect(actions).to include('create', 'update')
@@ -67,7 +67,7 @@ RSpec.describe 'Full workflow', type: :api do
     expect(last_response.status).to eq(200)
 
     # Step 8: Verify deletion is in activity log
-    get '/api/activity_log', { entity: 'org.locks' }, auth_header(user_token)
+    get '/api/activity_log', { table: 'org.locks' }, auth_header(user_token)
     actions = json_body['entries'].map { |e| e['action'] }
     expect(actions).to include('create', 'update', 'delete')
 

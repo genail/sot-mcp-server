@@ -53,7 +53,7 @@ RSpec.describe SOT::Tools::Admin::ManageUsers, type: :tool do
 
     it 'returns error when user has associated records' do
       worker = create(:user, name: 'worker')
-      schema = create(:entity_schema)
+      schema = create(:table_schema)
       SOT::MutationService.create(schema: schema, data: { 'title' => 'item' }, user: worker)
 
       response = call_tool(described_class, user: admin,

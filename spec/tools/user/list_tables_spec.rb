@@ -1,10 +1,10 @@
 require 'spec_helper'
 
-RSpec.describe SOT::Tools::User::ListEntities, type: :tool do
+RSpec.describe SOT::Tools::User::ListTables, type: :tool do
   describe '.call' do
     it 'returns all schemas' do
-      create(:entity_schema, namespace: 'org', name: 'locks', description: 'Resource locks')
-      create(:entity_schema, namespace: 'org', name: 'docs', description: 'Documentation')
+      create(:table_schema, namespace: 'org', name: 'locks', description: 'Resource locks')
+      create(:table_schema, namespace: 'org', name: 'docs', description: 'Documentation')
       response = call_tool(described_class)
       text = response_text(response)
       expect(text).to include('org.locks')
@@ -13,8 +13,8 @@ RSpec.describe SOT::Tools::User::ListEntities, type: :tool do
     end
 
     it 'filters by namespace' do
-      create(:entity_schema, namespace: 'org', name: 'locks')
-      create(:entity_schema, namespace: 'project', name: 'tasks')
+      create(:table_schema, namespace: 'org', name: 'locks')
+      create(:table_schema, namespace: 'project', name: 'tasks')
       response = call_tool(described_class, namespace: 'org')
       text = response_text(response)
       expect(text).to include('org.locks')
@@ -22,7 +22,7 @@ RSpec.describe SOT::Tools::User::ListEntities, type: :tool do
     end
 
     it 'shows field descriptions' do
-      create(:entity_schema)
+      create(:table_schema)
       response = call_tool(described_class)
       text = response_text(response)
       expect(text).to include('title (string) (required)')
@@ -30,7 +30,7 @@ RSpec.describe SOT::Tools::User::ListEntities, type: :tool do
     end
 
     it 'shows state descriptions for stateful schemas' do
-      create(:entity_schema, :stateful)
+      create(:table_schema, :stateful)
       response = call_tool(described_class)
       text = response_text(response)
       expect(text).to include('States:')
@@ -38,7 +38,7 @@ RSpec.describe SOT::Tools::User::ListEntities, type: :tool do
     end
 
     it 'shows Stateless for stateless schemas' do
-      create(:entity_schema)
+      create(:table_schema)
       response = call_tool(described_class)
       text = response_text(response)
       expect(text).to include('Stateless')
@@ -47,7 +47,7 @@ RSpec.describe SOT::Tools::User::ListEntities, type: :tool do
     it 'handles no schemas' do
       response = call_tool(described_class)
       text = response_text(response)
-      expect(text).to include('No entity types found')
+      expect(text).to include('No tables found')
     end
   end
 end

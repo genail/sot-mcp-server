@@ -3,8 +3,8 @@ require 'spec_helper'
 RSpec.describe SOT::MutationService do
   let(:user) { create(:user) }
   let(:user2) { create(:user) }
-  let(:stateful_schema) { create(:entity_schema, :stateful) }
-  let(:stateless_schema) { create(:entity_schema) }
+  let(:stateful_schema) { create(:table_schema, :stateful) }
+  let(:stateless_schema) { create(:table_schema) }
 
   describe '.create' do
     it 'creates a record with valid data' do
@@ -229,7 +229,7 @@ RSpec.describe SOT::MutationService do
       }.to raise_error(SOT::MutationService::PreconditionFailed)
     end
 
-    it 'raises when setting state on stateless entity via update' do
+    it 'raises when setting state on stateless table via update' do
       stateless_record = described_class.create(
         schema: stateless_schema,
         data: { 'title' => 'Test' },

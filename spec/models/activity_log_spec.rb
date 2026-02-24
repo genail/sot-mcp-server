@@ -2,7 +2,7 @@ require 'spec_helper'
 
 RSpec.describe SOT::ActivityLog do
   let(:user) { create(:user) }
-  let(:schema) { create(:entity_schema) }
+  let(:schema) { create(:table_schema) }
 
   describe 'validations' do
     it 'requires user_id' do

@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :record, class: 'SOT::Record' do
     transient do
-      with_schema { create(:entity_schema) }
+      with_schema { create(:table_schema) }
       with_user { create(:user) }
     end
 

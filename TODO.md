@@ -33,11 +33,11 @@ A user can't discover whether they have admin privileges without trying an admin
 - `lib/sot/tools/user/whoami.rb:16`
 
 ### 8. Schema create/update responses don't echo the result
-Admin gets "Updated entity type 'X'" but not the resulting fields/states. REST API returns the full schema; MCP doesn't.
+Admin gets "Updated table 'X'" but not the resulting fields/states. REST API returns the full schema; MCP doesn't.
 - `lib/sot/tools/admin/manage_schema.rb:86,104`
 
-### 9. Feedback entity link silently dropped
-If entity name doesn't resolve, feedback saves with `schema_id: nil` — no error. Admin sees feedback with no entity context.
+### 9. Feedback table link silently dropped
+If table name doesn't resolve, feedback saves with `schema_id: nil` — no error. Admin sees feedback with no table context.
 - `lib/sot/tools/user/feedback.rb:31`
 
 ### 10. Users can't view their own submitted feedback
@@ -67,9 +67,9 @@ No delete action, `resolved` is one-way. Duplicates or mistakes can't be cleaned
 No range queries, partial matching, or multi-value filters. Integer/float fields can't be queried numerically.
 - `lib/sot/services/query_service.rb:8-13`
 
-### 16. Default state not marked in `sot_list_entities`
+### 16. Default state not marked in `sot_list_tables`
 States are listed without indicating which is the default initial state.
-- `lib/sot/tools/user/list_entities.rb`
+- `lib/sot/tools/user/list_tables.rb`
 
 ### 17. Inconsistent default limits
 REST defaults to 50, MCP to 100.

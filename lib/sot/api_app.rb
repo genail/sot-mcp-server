@@ -40,9 +40,9 @@ module SOT
 
     # --- Record endpoints ---
 
-    get '/records/:entity' do
-      schema = SOT::SchemaService.resolve(params[:entity])
-      halt 404, json(error: "Entity '#{params[:entity]}' not found.") unless schema
+    get '/records/:table' do
+      schema = SOT::SchemaService.resolve(params[:table])
+      halt 404, json(error: "Table '#{params[:table]}' not found.") unless schema
 
       filters = params[:filters] ? JSON.parse(params[:filters]) : {}
       halt 400, json(error: 'Filters must be a JSON object.') unless filters.is_a?(Hash)
@@ -68,11 +68,11 @@ module SOT
 
     post '/records' do
       data = parse_json_body
-      entity = data['entity']
-      halt 400, json(error: "'entity' is required.") unless entity
+      table = data['table']
+      halt 400, json(error: "'table' is required.") unless table
 
-      schema = SOT::SchemaService.resolve(entity)
-      halt 404, json(error: "Entity '#{entity}' not found.") unless schema
+      schema = SOT::SchemaService.resolve(table)
+      halt 404, json(error: "Table '#{table}' not found.") unless schema
 
       record = SOT::MutationService.create(
         schema: schema,
@@ -128,9 +128,9 @@ module SOT
     get '/activity_log' do
       dataset = SOT::ActivityLog.order(Sequel.desc(:created_at))
 
-      if params[:entity]
-        schema = SOT::SchemaService.resolve(params[:entity])
-        halt 404, json(error: "Entity '#{params[:entity]}' not found.") unless schema
+      if params[:table]
+        schema = SOT::SchemaService.resolve(params[:table])
+        halt 404, json(error: "Table '#{params[:table]}' not found.") unless schema
         dataset = dataset.where(schema_id: schema.id)
       end
 
@@ -187,7 +187,7 @@ module SOT
       schema.destroy
       json(message: "Deleted schema '#{schema.full_name}'.")
     rescue Sequel::ForeignKeyConstraintViolation
-      halt 409, json(error: "Cannot delete schema '#{schema.full_name}': it has associated activity log entries. Delete those first.")
+      halt 409, json(error: "Cannot delete table '#{schema.full_name}': it has associated activity log entries. Delete those first.")
     end
 
     private

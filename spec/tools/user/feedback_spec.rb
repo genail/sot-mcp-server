@@ -13,10 +13,10 @@ RSpec.describe SOT::Tools::User::FeedbackTool, type: :tool do
       expect(SOT::Feedback.count).to eq(1)
     end
 
-    it 'links feedback to a schema when entity is provided' do
-      schema = create(:entity_schema, namespace: 'org', name: 'locks')
+    it 'links feedback to a schema when table is provided' do
+      schema = create(:table_schema, namespace: 'org', name: 'locks')
       call_tool(described_class, user: user,
-                entity: 'org.locks',
+                table: 'org.locks',
                 context: 'ctx',
                 confusion: 'confused')
       expect(SOT::Feedback.first.schema_id).to eq(schema.id)

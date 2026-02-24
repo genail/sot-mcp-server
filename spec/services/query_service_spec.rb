@@ -2,7 +2,7 @@ require 'spec_helper'
 
 RSpec.describe SOT::QueryService do
   let(:user) { create(:user) }
-  let(:schema) { create(:entity_schema, :stateful) }
+  let(:schema) { create(:table_schema, :stateful) }
 
   def create_record(data: { 'title' => 'Test', 'count' => '1' }, state: 'open')
     SOT::MutationService.create(schema: schema, data: data, state: state, user: user)
@@ -76,7 +76,7 @@ RSpec.describe SOT::QueryService do
     end
 
     it 'returns nil if record belongs to a different schema' do
-      other_schema = create(:entity_schema)
+      other_schema = create(:table_schema)
       record = create(:record, with_schema: other_schema)
       expect(described_class.find(schema, record.id)).to be_nil
     end

@@ -8,7 +8,7 @@ module SOT
           Create, update, or delete a record. Supports atomic preconditions.
 
           Actions:
-          - create: New record. Requires entity and data. State defaults to first defined state for stateful entities.
+          - create: New record. Requires table and data. State defaults to first defined state for stateful tables.
           - update: Update existing record. Requires record_id. Provide data and/or state to change.
             Data is MERGED into the existing record — only the fields you provide are changed.
             To remove a field, set it to null. To fully replace all data, set replace_data to true.
@@ -29,9 +29,9 @@ module SOT
               enum: %w[create update delete],
               description: 'The mutation action'
             },
-            entity: {
+            table: {
               type: 'string',
-              description: 'Entity type name (required for create)'
+              description: 'Table name (required for create)'
             },
             record_id: {
               type: 'integer',
@@ -75,9 +75,9 @@ module SOT
         private
 
         def self.handle_create(params, user)
-          schema = SOT::SchemaService.resolve(params[:entity])
-          return error_response("Entity type '#{params[:entity]}' not found.",
-                                hint: 'Use sot_list_entities to see available entity types.') unless schema
+          schema = SOT::SchemaService.resolve(params[:table])
+          return error_response("Table '#{params[:table]}' not found.",
+                                hint: 'Use sot_list_tables to see available tables.') unless schema
           return error_response("'data' is required for create.", schema: schema) unless params[:data]
 
           record = SOT::MutationService.create(
@@ -93,7 +93,7 @@ module SOT
             text: "Created record ##{record.id}#{state_info} in #{schema.full_name}:\n#{record.data}"
           }])
         rescue SOT::MutationService::ValidationError => e
-          schema = SOT::SchemaService.resolve(params[:entity])
+          schema = SOT::SchemaService.resolve(params[:table])
           error_response(e.message, schema: schema)
         end
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-SOT (Source of Truth) Server — a Ruby backend exposing structured data management via both REST API and MCP (Model Context Protocol) for AI agents. Built with Sinatra + Sequel ORM + SQLite. Entities are defined by admin-managed schemas; records are CRUD'd with precondition-based compare-and-swap, state transitions, and a full audit trail.
+SOT (Source of Truth) Server — a Ruby backend exposing structured data management via both REST API and MCP (Model Context Protocol) for AI agents. Built with Sinatra + Sequel ORM + SQLite. Tables are defined by admin-managed schemas; records are CRUD'd with precondition-based compare-and-swap, state transitions, and a full audit trail.
 
 ## Commands
 
@@ -37,7 +37,7 @@ Three Rack-mounted paths, each behind `TokenAuth` middleware (Bearer token + BCr
 ### Layers
 
 - **Middleware** (`lib/sot/middleware/`) — `TokenAuth` authenticates and sets `env['sot.current_user']`; `AdminGate` checks `is_admin`.
-- **MCP Tools** (`lib/sot/tools/`) — Inherit from `MCP::Tool`. Each defines `tool_name`, `description`, `input_schema`, and `self.call(server_context:, **params)`. User tools: `sot_query`, `sot_mutate`, `sot_list_entities`, `sot_activity_log`, `sot_feedback`. Admin tools: `sot_admin_manage_schema`, `sot_admin_manage_users`, `sot_admin_view_feedback`.
+- **MCP Tools** (`lib/sot/tools/`) — Inherit from `MCP::Tool`. Each defines `tool_name`, `description`, `input_schema`, and `self.call(server_context:, **params)`. User tools: `sot_query`, `sot_mutate`, `sot_list_tables`, `sot_activity_log`, `sot_feedback`. Admin tools: `sot_admin_manage_schema`, `sot_admin_manage_users`, `sot_admin_view_feedback`.
 - **Services** (`lib/sot/services/`) — Stateless business logic. `MutationService` wraps writes in transactions with precondition checks and activity logging. `QueryService` uses SQLite `json_extract()` for filtering JSON fields. `SchemaService` validates field types (`string`, `integer`, `float`, `boolean`, `text`).
 - **Models** (`lib/sot/models/`) — Sequel models mapped to underscore-prefixed tables (`_users`, `_schemas`, `_records`, `_activity_log`, `_feedback`). `User.authenticate(token)` does BCrypt compare. `Schema` parses JSON `fields`/`states` columns. `Record` stores data as JSON.
 
@@ -50,7 +50,7 @@ SQLite with Sequel. Test env uses in-memory DB (`:memory:`); dev/prod uses `db/s
 - **Compare-and-swap preconditions** on mutations prevent lost-update races (see `MutationService`).
 - **Immutable activity log** records every create/update/delete with before/after diffs.
 - **Feedback loop** — agents call `sot_feedback` to flag confusing schema descriptions; admins review via `sot_admin_view_feedback`.
-- **Namespaced schemas** — entity types scoped by `namespace.name` (e.g., `org.locks`).
+- **Namespaced schemas** — tables scoped by `namespace.name` (e.g., `org.locks`).
 - **Optional state machine** — schemas can define `states`; records transition between them.
 
 ## Testing

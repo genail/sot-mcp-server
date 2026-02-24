@@ -41,7 +41,7 @@ RSpec.describe 'Auth flow', type: :api do
 
   describe 'regular user access' do
     before do
-      create(:entity_schema, namespace: 'org', name: 'docs')
+      create(:table_schema, namespace: 'org', name: 'docs')
     end
 
     it 'allows authenticated user to read schemas' do
@@ -52,7 +52,7 @@ RSpec.describe 'Auth flow', type: :api do
 
     it 'allows authenticated user to create records' do
       post_json '/api/records', {
-        entity: 'org.docs',
+        table: 'org.docs',
         data: { 'title' => 'My Doc' }
       }, auth_header(user_token)
 

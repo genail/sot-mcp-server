@@ -1,6 +1,6 @@
 module SOT
   class ErrorFormatter
-    FEEDBACK_TIP = "Tip: If you find these descriptions confusing or contradictory, please use sot_feedback to report it so the admin can improve them."
+    FEEDBACK_TIP = "Tip: If you find these descriptions confusing or contradictory, use sot_feedback to report it so the admin can improve them."
 
     def self.format(message, schema: nil, record: nil, hint: nil)
       parts = ["ERROR: #{message}"]

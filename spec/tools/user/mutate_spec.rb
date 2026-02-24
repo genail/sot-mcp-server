@@ -2,35 +2,35 @@ require 'spec_helper'
 
 RSpec.describe SOT::Tools::User::Mutate, type: :tool do
   let(:user) { create(:user) }
-  let!(:schema) { create(:entity_schema, :stateful, namespace: 'org', name: 'locks', description: 'Resource locks') }
+  let!(:schema) { create(:table_schema, :stateful, namespace: 'org', name: 'locks', description: 'Resource locks') }
 
   describe 'create action' do
     it 'creates a record' do
       response = call_tool(described_class, user: user,
-                           action: 'create', entity: 'org.locks', data: { 'title' => 'New' })
+                           action: 'create', table: 'org.locks', data: { 'title' => 'New' })
       expect(response_error?(response)).to be false
       text = response_text(response)
       expect(text).to include('Created record')
       expect(text).to include('New')
     end
 
-    it 'returns error for unknown entity' do
+    it 'returns error for unknown table' do
       response = call_tool(described_class, user: user,
-                           action: 'create', entity: 'nonexistent', data: { 'title' => 'x' })
+                           action: 'create', table: 'nonexistent', data: { 'title' => 'x' })
       expect(response_error?(response)).to be true
       expect(response_text(response)).to include('not found')
     end
 
     it 'returns error for missing data' do
       response = call_tool(described_class, user: user,
-                           action: 'create', entity: 'org.locks')
+                           action: 'create', table: 'org.locks')
       expect(response_error?(response)).to be true
       expect(response_text(response)).to include("'data' is required")
     end
 
     it 'returns schema context on validation error' do
       response = call_tool(described_class, user: user,
-                           action: 'create', entity: 'org.locks', data: { 'bad' => 'field' })
+                           action: 'create', table: 'org.locks', data: { 'bad' => 'field' })
       expect(response_error?(response)).to be true
       text = response_text(response)
       expect(text).to include('Schema Context')

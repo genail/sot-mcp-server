@@ -46,7 +46,7 @@ RSpec.describe 'Admin API', type: :api do
   end
 
   describe 'PATCH /api/admin/schemas/:id' do
-    let!(:schema) { create(:entity_schema, namespace: 'org', name: 'docs') }
+    let!(:schema) { create(:table_schema, namespace: 'org', name: 'docs') }
 
     it 'updates a schema' do
       patch_json "/api/admin/schemas/#{schema.id}", {
@@ -67,7 +67,7 @@ RSpec.describe 'Admin API', type: :api do
   end
 
   describe 'DELETE /api/admin/schemas/:id' do
-    let!(:schema) { create(:entity_schema, namespace: 'org', name: 'temp') }
+    let!(:schema) { create(:table_schema, namespace: 'org', name: 'temp') }
 
     it 'deletes a schema' do
       delete "/api/admin/schemas/#{schema.id}", {}, auth_header(admin_token)

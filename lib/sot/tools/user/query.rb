@@ -5,23 +5,23 @@ module SOT
         tool_name 'sot_query'
 
         description <<~DESC
-          Query records of a specific entity type, or fetch a single record by ID.
-          Use sot_list_entities first to discover available entity types and their field names.
+          Query records of a specific table, or fetch a single record by ID.
+          Use sot_list_tables first to discover available tables and their field names.
 
           Parameters:
-          - entity (required): The entity type name, e.g., "org.locks" or just "locks"
+          - table (required): The table name, e.g., "org.locks" or just "locks"
           - record_id: Fetch a specific record by ID (returns one record, ignores filters/pagination)
           - filters: Hash of field_name => value for exact match filtering
           - state: Filter by current state
           - limit: Max records to return (default 100)
           - offset: Pagination offset (default 0)
 
-          DO NOT use field names not defined in the schema. Call sot_list_entities first.
+          DO NOT use field names not defined in the schema. Call sot_list_tables first.
         DESC
 
         input_schema(
           properties: {
-            entity: { type: 'string', description: 'Entity type name, e.g. "org.locks"' },
+            table: { type: 'string', description: 'Table name, e.g. "org.locks"' },
             record_id: { type: 'integer', description: 'Fetch a single record by ID' },
             filters: {
               type: 'object',
@@ -32,14 +32,14 @@ module SOT
             limit: { type: 'integer', description: 'Max results (default 100)' },
             offset: { type: 'integer', description: 'Pagination offset (default 0)' }
           },
-          required: ['entity']
+          required: ['table']
         )
 
         def self.call(server_context:, **params)
-          schema = SOT::SchemaService.resolve(params[:entity])
+          schema = SOT::SchemaService.resolve(params[:table])
           unless schema
-            return error_response("Entity type '#{params[:entity]}' not found.",
-                                  hint: 'Use sot_list_entities to see available entity types.')
+            return error_response("Table '#{params[:table]}' not found.",
+                                  hint: 'Use sot_list_tables to see available tables.')
           end
 
           # Single record lookup by ID

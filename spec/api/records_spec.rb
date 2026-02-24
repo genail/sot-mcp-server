@@ -4,15 +4,15 @@ RSpec.describe 'Records API', type: :api do
   let(:user_pair) { SOT::User.create_with_token(name: 'api_user') }
   let(:user) { user_pair.first }
   let(:token) { user_pair.last }
-  let!(:schema) { create(:entity_schema, :stateful, namespace: 'org', name: 'locks') }
+  let!(:schema) { create(:table_schema, :stateful, namespace: 'org', name: 'locks') }
 
-  describe 'GET /api/records/:entity' do
+  describe 'GET /api/records/:table' do
     before do
       SOT::MutationService.create(schema: schema, data: { 'title' => 'Lock A' }, state: 'open', user: user)
       SOT::MutationService.create(schema: schema, data: { 'title' => 'Lock B' }, state: 'closed', user: user)
     end
 
-    it 'lists records for entity' do
+    it 'lists records for table' do
       get '/api/records/org.locks', {}, auth_header(token)
 
       expect(last_response.status).to eq(200)
@@ -35,7 +35,7 @@ RSpec.describe 'Records API', type: :api do
       expect(json_body['records'].length).to eq(1)
     end
 
-    it 'returns 404 for unknown entity' do
+    it 'returns 404 for unknown table' do
       get '/api/records/nonexistent', {}, auth_header(token)
 
       expect(last_response.status).to eq(404)
@@ -68,7 +68,7 @@ RSpec.describe 'Records API', type: :api do
   describe 'POST /api/records' do
     it 'creates a record' do
       post_json '/api/records', {
-        entity: 'org.locks',
+        table: 'org.locks',
         data: { 'title' => 'New Lock' },
         state: 'open'
       }, auth_header(token)
@@ -78,9 +78,9 @@ RSpec.describe 'Records API', type: :api do
       expect(json_body['record']['state']).to eq('open')
     end
 
-    it 'returns 404 for unknown entity' do
+    it 'returns 404 for unknown table' do
       post_json '/api/records', {
-        entity: 'nonexistent',
+        table: 'nonexistent',
         data: { 'title' => 'x' }
       }, auth_header(token)
 
@@ -89,7 +89,7 @@ RSpec.describe 'Records API', type: :api do
 
     it 'returns 422 on validation error' do
       post_json '/api/records', {
-        entity: 'org.locks',
+        table: 'org.locks',
         data: { 'title' => 'x', 'bad_field' => 'y' }
       }, auth_header(token)
 
@@ -97,11 +97,11 @@ RSpec.describe 'Records API', type: :api do
       expect(json_body['error']).to include('Unknown fields')
     end
 
-    it 'returns 400 without entity' do
+    it 'returns 400 without table' do
       post_json '/api/records', { data: { 'title' => 'x' } }, auth_header(token)
 
       expect(last_response.status).to eq(400)
-      expect(json_body['error']).to include("'entity' is required")
+      expect(json_body['error']).to include("'table' is required")
     end
   end
 

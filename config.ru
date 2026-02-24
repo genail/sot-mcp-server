@@ -1,7 +1,7 @@
 require_relative 'config/boot'
 
 USER_TOOLS = [
-  SOT::Tools::User::ListEntities,
+  SOT::Tools::User::ListTables,
   SOT::Tools::User::Query,
   SOT::Tools::User::Mutate,
   SOT::Tools::User::ActivityLogTool,

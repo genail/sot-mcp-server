@@ -8,12 +8,12 @@ module SOT
           View the change history for records.
           Shows who changed what, when, and the before/after diff.
 
-          Filter by entity type, specific record ID, user name, or action type.
+          Filter by table, specific record ID, user name, or action type.
         DESC
 
         input_schema(
           properties: {
-            entity: { type: 'string', description: 'Filter by entity type (e.g., "org.locks")' },
+            table: { type: 'string', description: 'Filter by table (e.g., "org.locks")' },
             record_id: { type: 'integer', description: 'Filter by specific record ID' },
             user_name: { type: 'string', description: 'Filter by user name' },
             action: {
@@ -28,12 +28,12 @@ module SOT
         def self.call(server_context:, **params)
           dataset = SOT::ActivityLog.order(Sequel.desc(:created_at))
 
-          if params[:entity]
-            schema = SOT::SchemaService.resolve(params[:entity])
+          if params[:table]
+            schema = SOT::SchemaService.resolve(params[:table])
             unless schema
               text = SOT::ErrorFormatter.format(
-                "Entity type '#{params[:entity]}' not found.",
-                hint: 'Use sot_list_entities to see available entity types.'
+                "Table '#{params[:table]}' not found.",
+                hint: 'Use sot_list_tables to see available tables.'
               )
               return MCP::Tool::Response.new([{ type: 'text', text: text }], error: true)
             end

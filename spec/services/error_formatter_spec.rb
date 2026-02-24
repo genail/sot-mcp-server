@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 RSpec.describe SOT::ErrorFormatter do
-  let(:schema) { create(:entity_schema, :stateful, description: 'Tracks deployments') }
+  let(:schema) { create(:table_schema, :stateful, description: 'Tracks deployments') }
 
   describe '.format' do
     it 'includes the error message' do
@@ -30,7 +30,7 @@ RSpec.describe SOT::ErrorFormatter do
     end
 
     it 'does not include states for stateless schemas' do
-      stateless = create(:entity_schema)
+      stateless = create(:table_schema)
       result = described_class.format('error', schema: stateless)
       expect(result).not_to include('Valid states:')
     end
@@ -43,8 +43,8 @@ RSpec.describe SOT::ErrorFormatter do
     end
 
     it 'includes hint when provided' do
-      result = described_class.format('error', hint: 'Try using sot_list_entities first')
-      expect(result).to include('Hint: Try using sot_list_entities first')
+      result = described_class.format('error', hint: 'Try using sot_list_tables first')
+      expect(result).to include('Hint: Try using sot_list_tables first')
     end
 
     it 'works with minimal arguments' do

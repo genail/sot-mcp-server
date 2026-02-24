@@ -111,7 +111,7 @@ RSpec.describe SOT::SchemaService do
   end
 
   describe '.update' do
-    let(:schema) { create(:entity_schema) }
+    let(:schema) { create(:table_schema) }
 
     it 'updates the description' do
       described_class.update(schema, description: 'New description')
@@ -133,7 +133,7 @@ RSpec.describe SOT::SchemaService do
 
   describe '.delete' do
     it 'deletes the schema' do
-      schema = create(:entity_schema)
+      schema = create(:table_schema)
       id = schema.id
       described_class.delete(schema)
       expect(SOT::Schema[id]).to be_nil
@@ -142,16 +142,16 @@ RSpec.describe SOT::SchemaService do
 
   describe '.resolve' do
     it 'resolves by full name (namespace.name)' do
-      schema = create(:entity_schema, namespace: 'org', name: 'locks')
+      schema = create(:table_schema, namespace: 'org', name: 'locks')
       expect(described_class.resolve('org.locks')).to eq(schema)
     end
 
     it 'resolves by short name' do
-      schema = create(:entity_schema, name: 'locks')
+      schema = create(:table_schema, name: 'locks')
       expect(described_class.resolve('locks')).to eq(schema)
     end
 
-    it 'returns nil for unknown entity' do
+    it 'returns nil for unknown table' do
       expect(described_class.resolve('nonexistent')).to be_nil
     end
 
@@ -166,14 +166,14 @@ RSpec.describe SOT::SchemaService do
 
   describe '.list' do
     it 'returns all schemas' do
-      create(:entity_schema, namespace: 'org', name: 'a')
-      create(:entity_schema, namespace: 'org', name: 'b')
+      create(:table_schema, namespace: 'org', name: 'a')
+      create(:table_schema, namespace: 'org', name: 'b')
       expect(described_class.list.length).to eq(2)
     end
 
     it 'filters by namespace' do
-      create(:entity_schema, namespace: 'org', name: 'a')
-      create(:entity_schema, namespace: 'project', name: 'b')
+      create(:table_schema, namespace: 'org', name: 'a')
+      create(:table_schema, namespace: 'project', name: 'b')
       expect(described_class.list(namespace: 'org').length).to eq(1)
     end
   end

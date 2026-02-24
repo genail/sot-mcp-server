@@ -17,7 +17,7 @@ RSpec.describe SOT::Tools::Admin::ManageSchema, type: :tool do
                            action: 'create', namespace: 'org', name: 'locks',
                            description: 'Resource locks', fields: fields, states: states)
       expect(response_error?(response)).to be_falsey
-      expect(response_text(response)).to include("Created entity type 'org.locks'")
+      expect(response_text(response)).to include("Created table 'org.locks'")
       expect(SOT::Schema.count).to eq(1)
     end
 
@@ -38,15 +38,15 @@ RSpec.describe SOT::Tools::Admin::ManageSchema, type: :tool do
 
     it 'updates description' do
       response = call_tool(described_class, user: admin,
-                           action: 'update', entity: 'org.locks',
+                           action: 'update', table: 'org.locks',
                            description: 'Updated description')
       expect(response_error?(response)).to be_falsey
       expect(SOT::Schema.first.description).to eq('Updated description')
     end
 
-    it 'returns error for unknown entity' do
+    it 'returns error for unknown table' do
       response = call_tool(described_class, user: admin,
-                           action: 'update', entity: 'nonexistent')
+                           action: 'update', table: 'nonexistent')
       expect(response_error?(response)).to be true
     end
   end
@@ -60,7 +60,7 @@ RSpec.describe SOT::Tools::Admin::ManageSchema, type: :tool do
 
     it 'deletes a schema' do
       response = call_tool(described_class, user: admin,
-                           action: 'delete', entity: 'org.locks')
+                           action: 'delete', table: 'org.locks')
       expect(response_error?(response)).to be_falsey
       expect(SOT::Schema.count).to eq(0)
     end
@@ -78,7 +78,7 @@ RSpec.describe SOT::Tools::Admin::ManageSchema, type: :tool do
       SOT::Record.where(schema_id: schema.id).destroy
 
       response = call_tool(described_class, user: admin,
-                           action: 'delete', entity: 'org.locks')
+                           action: 'delete', table: 'org.locks')
       expect(response_error?(response)).to be true
       expect(response_text(response)).to include('Cannot delete')
     end

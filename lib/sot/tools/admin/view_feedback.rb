@@ -8,7 +8,7 @@ module SOT
           View and manage feedback submitted by agents about confusing descriptions.
 
           Actions:
-          - list: View feedback entries (optionally filtered by entity or resolved status).
+          - list: View feedback entries (optionally filtered by table or resolved status).
           - resolve: Mark a feedback entry as resolved.
         DESC
 
@@ -19,7 +19,7 @@ module SOT
               enum: %w[list resolve],
               description: 'The action (default: list)'
             },
-            entity: { type: 'string', description: 'Filter by entity type (for list)' },
+            table: { type: 'string', description: 'Filter by table (for list)' },
             resolved: { type: 'boolean', description: 'Filter by resolved status (for list)' },
             feedback_id: { type: 'integer', description: 'Feedback ID to resolve (for resolve action)' },
             limit: { type: 'integer', description: 'Max results (default 50)' }
@@ -42,8 +42,8 @@ module SOT
         def self.handle_list(params)
           dataset = SOT::Feedback.order(Sequel.desc(:created_at))
 
-          if params[:entity]
-            schema = SOT::SchemaService.resolve(params[:entity])
+          if params[:table]
+            schema = SOT::SchemaService.resolve(params[:table])
             dataset = dataset.where(schema_id: schema.id) if schema
           end
 

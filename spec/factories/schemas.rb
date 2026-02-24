@@ -1,8 +1,8 @@
 FactoryBot.define do
-  factory :entity_schema, class: 'SOT::Schema' do
-    sequence(:name) { |n| "entity_#{n}" }
+  factory :table_schema, class: 'SOT::Schema' do
+    sequence(:name) { |n| "table_#{n}" }
     namespace { 'test' }
-    description { 'A test entity type' }
+    description { 'A test table' }
     fields do
       JSON.generate([
         { 'name' => 'title', 'type' => 'string', 'description' => 'The title', 'required' => true },

@@ -1,18 +1,18 @@
 module SOT
   module Tools
     module User
-      class ListEntities < MCP::Tool
-        tool_name 'sot_list_entities'
+      class ListTables < MCP::Tool
+        tool_name 'sot_list_tables'
 
         description <<~DESC
-          List all entity types available in the Source of Truth.
-          Returns each entity's namespace, name, description, fields (with types and descriptions), and valid states.
+          List all tables available in the Source of Truth.
+          Returns each table's namespace, name, description, fields (with types and descriptions), and valid states.
 
-          USE THIS FIRST to understand what entity types exist before querying or mutating.
+          USE THIS FIRST to understand what tables exist before querying or mutating.
 
           Optional parameter: namespace — filter to a specific namespace (e.g., "org", "project").
 
-          DO NOT guess entity type names. Always call this tool first to discover them.
+          DO NOT guess table names. Always call this tool first to discover them.
         DESC
 
         input_schema(
@@ -30,7 +30,7 @@ module SOT
           if schemas.empty?
             return MCP::Tool::Response.new([{
               type: 'text',
-              text: "No entity types found.#{params[:namespace] ? ' Try without the namespace filter.' : ''}"
+              text: "No tables found.#{params[:namespace] ? ' Try without the namespace filter.' : ''}"
             }])
           end
 

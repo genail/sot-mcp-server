@@ -2,7 +2,7 @@ require 'spec_helper'
 
 RSpec.describe SOT::Tools::User::ActivityLogTool, type: :tool do
   let(:user) { create(:user) }
-  let(:schema) { create(:entity_schema, :stateful, namespace: 'org', name: 'locks') }
+  let(:schema) { create(:table_schema, :stateful, namespace: 'org', name: 'locks') }
 
   before do
     @record = SOT::MutationService.create(schema: schema, data: { 'title' => 'Test' }, state: 'open', user: user)
@@ -18,11 +18,11 @@ RSpec.describe SOT::Tools::User::ActivityLogTool, type: :tool do
       expect(text).to include('Activity log (2 entries)')
     end
 
-    it 'filters by entity' do
-      other_schema = create(:entity_schema, namespace: 'other', name: 'stuff')
+    it 'filters by table' do
+      other_schema = create(:table_schema, namespace: 'other', name: 'stuff')
       SOT::MutationService.create(schema: other_schema, data: { 'title' => 'Unrelated' }, user: user)
 
-      response = call_tool(described_class, user: user, entity: 'org.locks')
+      response = call_tool(described_class, user: user, table: 'org.locks')
       text = response_text(response)
       expect(text).to include('2 entries')
     end
@@ -39,8 +39,8 @@ RSpec.describe SOT::Tools::User::ActivityLogTool, type: :tool do
       expect(text).to include('1 entries')
     end
 
-    it 'returns error for unknown entity' do
-      response = call_tool(described_class, user: user, entity: 'nonexistent')
+    it 'returns error for unknown table' do
+      response = call_tool(described_class, user: user, table: 'nonexistent')
       expect(response_error?(response)).to be true
     end
 

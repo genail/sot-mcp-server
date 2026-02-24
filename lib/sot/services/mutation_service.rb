@@ -46,7 +46,7 @@ module SOT
     def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false)
       schema = record.schema
 
-      raise ValidationError, "Cannot set state on a stateless entity type" if state && !schema.stateful?
+      raise ValidationError, "Cannot set state on a stateless table" if state && !schema.stateful?
       raise ValidationError, "data must be a Hash" if data && !data.is_a?(Hash)
       validate_state!(schema, state) if state
 
@@ -155,7 +155,7 @@ module SOT
         if schema.stateful?
           state || schema.default_state
         else
-          raise ValidationError, "Cannot set state on a stateless entity type" if state
+          raise ValidationError, "Cannot set state on a stateless table" if state
           nil
         end
       end

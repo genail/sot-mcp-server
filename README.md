@@ -2,7 +2,7 @@
 
 Source of Truth server — structured data management via REST API and [MCP](https://modelcontextprotocol.io/) for AI agents. Built with Sinatra, Sequel, and SQLite.
 
-Admin-defined schemas describe entity types with typed fields and optional state machines. Records are CRUD'd with compare-and-swap preconditions and a full audit trail.
+Admin-defined schemas describe tables with typed fields and optional state machines. Records are CRUD'd with compare-and-swap preconditions and a full audit trail.
 
 ## Quick start
 
@@ -31,7 +31,7 @@ All endpoints (except `/install`) require `Authorization: Bearer <token>`.
 |------|-------------|
 | `POST /install` | Bootstrap admin user (once) |
 | `/api/schemas` | List schemas |
-| `/api/records/:entity` | Query records |
+| `/api/records/:table` | Query records |
 | `/api/records` | Create / update / delete records |
 | `/api/admin/schemas` | Manage schemas (admin) |
 | `/api/activity_log` | Audit trail |

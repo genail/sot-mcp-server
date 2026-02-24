@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 RSpec.describe 'Concurrent preconditions' do
-  let!(:schema) { create(:entity_schema, :stateful, namespace: 'org', name: 'locks') }
+  let!(:schema) { create(:table_schema, :stateful, namespace: 'org', name: 'locks') }
   let(:user1_pair) { SOT::User.create_with_token(name: 'user1') }
   let(:user1) { user1_pair.first }
   let(:user2_pair) { SOT::User.create_with_token(name: 'user2') }
