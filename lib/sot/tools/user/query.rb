@@ -82,7 +82,11 @@ module SOT
           end
 
           count = SOT::QueryService.count(schema, filters: filters, state: params[:state])
-          header = "Found #{count} record(s) for #{schema.full_name}:"
+          limit = params[:limit] || 100
+          offset = params[:offset] || 0
+          from = offset + 1
+          to = offset + records.length
+          header = "Showing #{from}-#{to} of #{count} record(s) for #{schema.full_name}:"
 
           MCP::Tool::Response.new([{
             type: 'text',

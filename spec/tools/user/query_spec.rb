@@ -15,7 +15,7 @@ RSpec.describe SOT::Tools::User::Query, type: :tool do
       text = response_text(response)
       expect(text).to include('Alpha')
       expect(text).to include('Beta')
-      expect(text).to include('Found 2 record(s)')
+      expect(text).to include('Showing 1-2 of 2 record(s)')
     end
 
     it 'filters by state' do
