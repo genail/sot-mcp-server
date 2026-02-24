@@ -1,0 +1,11 @@
+services:
+  sot-server:
+    build: .
+    ports:
+      - "39482:39482"
+    volumes:
+      - ./data:/data
+    environment:
+      RACK_ENV: production
+      SOT_DB_PATH: /data/sot.sqlite3
+    restart: unless-stopped

@@ -6,6 +6,15 @@ Admin-defined schemas describe entity types with typed fields and optional state
 
 ## Quick start
 
+### Docker (recommended)
+
+```bash
+docker compose up -d
+docker compose run --rm sot-server bundle exec rake db:seed   # creates admin user, prints token
+```
+
+### Local
+
 ```bash
 bundle install
 rake server            # starts on port 39482
@@ -65,6 +74,24 @@ claude mcp add sot-admin -t http http://localhost:39482/mcp/admin \
   }
 }
 ```
+
+## Docker
+
+The app runs in a multi-stage Docker build with `ruby:3.3-slim`. SQLite database is stored on a bind-mounted host directory (`./data/`).
+
+Migrations run automatically on every container start. To run them manually:
+
+```bash
+docker compose run --rm sot-server bundle exec rake db:migrate
+```
+
+Configuration via environment variables in `docker-compose.yml`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RACK_ENV` | `production` | Rack/Sinatra environment |
+| `SOT_DB_PATH` | `/data/sot.sqlite3` | SQLite database file path |
+| `PORT` | `39482` | Server listen port |
 
 ## Development
 

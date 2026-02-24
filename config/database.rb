@@ -5,6 +5,8 @@ module SOT
     def self.connect(url = nil)
       url ||= if ENV['RACK_ENV'] == 'test'
                 'sqlite:/'
+              elsif ENV['SOT_DB_PATH']
+                "sqlite://#{File.expand_path(ENV['SOT_DB_PATH'])}"
               else
                 "sqlite://#{File.expand_path("../db/sot_#{ENV.fetch('RACK_ENV', 'development')}.sqlite3", __dir__)}"
               end
