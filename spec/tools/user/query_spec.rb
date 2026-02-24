@@ -52,12 +52,18 @@ RSpec.describe SOT::Tools::User::Query, type: :tool do
       expect(text).to include('No records found')
     end
 
-    it 'fetches a single record by ID' do
+    it 'fetches a single record by ID with version' do
       record = SOT::Record.order(:id).first
       response = call_tool(described_class, user: user, table: 'org.locks', record_id: record.id)
       text = response_text(response)
-      expect(text).to include("Record ##{record.id}")
+      expect(text).to include("Record ##{record.id} (v1)")
       expect(text).to include('Alpha')
+    end
+
+    it 'includes version in list results' do
+      response = call_tool(described_class, user: user, table: 'org.locks')
+      text = response_text(response)
+      expect(text).to include('(v1)')
     end
 
     it 'returns error for unknown record ID' do

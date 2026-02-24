@@ -5,12 +5,13 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
   let!(:schema) { create(:table_schema, :stateful, namespace: 'org', name: 'locks', description: 'Resource locks') }
 
   describe 'create action' do
-    it 'creates a record' do
+    it 'creates a record with version 1' do
       response = call_tool(described_class, user: user,
                            action: 'create', table: 'org.locks', data: { 'title' => 'New' })
       expect(response_error?(response)).to be false
       text = response_text(response)
       expect(text).to include('Created record')
+      expect(text).to include('(v1)')
       expect(text).to include('New')
     end
 
@@ -45,19 +46,27 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
     end
 
     it 'merges data by default' do
-      SOT::MutationService.update(record: record, data: { 'title' => 'Original', 'count' => '3' }, user: user, replace_data: true)
+      SOT::MutationService.update(record: record, data: { 'title' => 'Original', 'count' => '3' }, expected_version: 1, user: user, replace_data: true)
       response = call_tool(described_class, user: user,
-                           action: 'update', record_id: record.id, data: { 'title' => 'Updated' })
+                           action: 'update', record_id: record.id, data: { 'title' => 'Updated' }, version: 2)
       expect(response_error?(response)).to be false
       refreshed = SOT::Record[record.id]
       expect(refreshed.parsed_data['title']).to eq('Updated')
       expect(refreshed.parsed_data['count']).to eq('3')
     end
 
+    it 'returns updated version in response' do
+      response = call_tool(described_class, user: user,
+                           action: 'update', record_id: record.id,
+                           data: { 'title' => 'Updated' }, version: 1)
+      expect(response_error?(response)).to be false
+      expect(response_text(response)).to include('(v2)')
+    end
+
     it 'replaces data when replace_data is true' do
       response = call_tool(described_class, user: user,
                            action: 'update', record_id: record.id,
-                           data: { 'title' => 'Replaced' }, replace_data: true)
+                           data: { 'title' => 'Replaced' }, replace_data: true, version: 1)
       expect(response_error?(response)).to be false
       expect(response_text(response)).to include('Replaced')
     end
@@ -65,15 +74,31 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
     it 'updates with passing preconditions' do
       response = call_tool(described_class, user: user,
                            action: 'update', record_id: record.id,
-                           state: 'closed', preconditions: { 'state' => 'open' })
+                           state: 'closed', preconditions: { 'state' => 'open' }, version: 1)
       expect(response_error?(response)).to be false
       expect(response_text(response)).to include('closed')
+    end
+
+    it 'returns error on version conflict' do
+      response = call_tool(described_class, user: user,
+                           action: 'update', record_id: record.id,
+                           data: { 'title' => 'New' }, version: 99)
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('Version conflict')
+    end
+
+    it 'returns error when version is missing for non-append update' do
+      response = call_tool(described_class, user: user,
+                           action: 'update', record_id: record.id,
+                           data: { 'title' => 'New' })
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('version is required')
     end
 
     it 'returns error with schema context on precondition failure' do
       response = call_tool(described_class, user: user,
                            action: 'update', record_id: record.id,
-                           state: 'closed', preconditions: { 'state' => 'closed' })
+                           state: 'closed', preconditions: { 'state' => 'closed' }, version: 1)
       expect(response_error?(response)).to be true
       text = response_text(response)
       expect(text).to include('Precondition failed')
@@ -82,7 +107,7 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
       expect(text).to include('sot_feedback')
     end
 
-    it 'appends to a field with append_data' do
+    it 'appends to a field with append_data (no version required)' do
       schema_with_log = create(:table_schema, namespace: 'org', name: 'tasks',
                                fields: JSON.generate([
                                  { 'name' => 'title', 'type' => 'string', 'required' => true },
@@ -127,15 +152,29 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
 
     it 'deletes a record' do
       response = call_tool(described_class, user: user,
-                           action: 'delete', record_id: record.id)
+                           action: 'delete', record_id: record.id, version: 1)
       expect(response_error?(response)).to be false
       expect(response_text(response)).to include('Deleted')
+    end
+
+    it 'returns error on version conflict' do
+      response = call_tool(described_class, user: user,
+                           action: 'delete', record_id: record.id, version: 99)
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('Version conflict')
+    end
+
+    it 'returns error when version is missing' do
+      response = call_tool(described_class, user: user,
+                           action: 'delete', record_id: record.id)
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('version is required')
     end
 
     it 'returns error on precondition failure' do
       response = call_tool(described_class, user: user,
                            action: 'delete', record_id: record.id,
-                           preconditions: { 'state' => 'closed' })
+                           preconditions: { 'state' => 'closed' }, version: 1)
       expect(response_error?(response)).to be true
       expect(response_text(response)).to include('Precondition failed')
     end

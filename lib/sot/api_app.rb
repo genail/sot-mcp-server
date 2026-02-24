@@ -102,10 +102,13 @@ module SOT
         preconditions: data['preconditions'],
         user: current_user,
         replace_data: data['replace_data'] || false,
-        append_data: data['append_data']
+        append_data: data['append_data'],
+        expected_version: data['version']
       )
 
       json(record: serialize_record(updated))
+    rescue SOT::MutationService::VersionConflict => e
+      halt 409, json(error: e.message)
     rescue SOT::MutationService::PreconditionFailed => e
       halt 409, json(error: e.message)
     rescue SOT::MutationService::ValidationError => e
@@ -120,12 +123,17 @@ module SOT
       SOT::MutationService.delete(
         record: record,
         preconditions: data['preconditions'],
-        user: current_user
+        user: current_user,
+        expected_version: data['version']
       )
 
       json(message: "Deleted record ##{params[:id]}.")
+    rescue SOT::MutationService::VersionConflict => e
+      halt 409, json(error: e.message)
     rescue SOT::MutationService::PreconditionFailed => e
       halt 409, json(error: e.message)
+    rescue SOT::MutationService::ValidationError => e
+      halt 422, json(error: e.message)
     end
 
     # --- Activity log ---
@@ -216,6 +224,7 @@ module SOT
     def serialize_record(r)
       {
         id: r.id,
+        version: r.current_version,
         schema_id: r.schema_id,
         data: r.parsed_data,
         state: r.state,

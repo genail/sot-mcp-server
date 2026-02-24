@@ -112,27 +112,41 @@ RSpec.describe 'Records API', type: :api do
 
     it 'updates a record' do
       patch_json "/api/records/#{record.id}", {
-        data: { 'title' => 'Updated' }
+        data: { 'title' => 'Updated' },
+        version: 1
       }, auth_header(token)
 
       expect(last_response.status).to eq(200)
       expect(json_body['record']['data']['title']).to eq('Updated')
+      expect(json_body['record']['version']).to eq(2)
     end
 
     it 'updates state with preconditions' do
       patch_json "/api/records/#{record.id}", {
         state: 'closed',
-        preconditions: { 'state' => 'open' }
+        preconditions: { 'state' => 'open' },
+        version: 1
       }, auth_header(token)
 
       expect(last_response.status).to eq(200)
       expect(json_body['record']['state']).to eq('closed')
     end
 
+    it 'returns 409 on version conflict' do
+      patch_json "/api/records/#{record.id}", {
+        data: { 'title' => 'New' },
+        version: 99
+      }, auth_header(token)
+
+      expect(last_response.status).to eq(409)
+      expect(json_body['error']).to include('Version conflict')
+    end
+
     it 'returns 409 on precondition failure' do
       patch_json "/api/records/#{record.id}", {
         state: 'closed',
-        preconditions: { 'state' => 'closed' }
+        preconditions: { 'state' => 'closed' },
+        version: 1
       }, auth_header(token)
 
       expect(last_response.status).to eq(409)
@@ -140,7 +154,7 @@ RSpec.describe 'Records API', type: :api do
     end
 
     it 'returns 404 for nonexistent record' do
-      patch_json '/api/records/99999', { data: { 'title' => 'x' } }, auth_header(token)
+      patch_json '/api/records/99999', { data: { 'title' => 'x' }, version: 1 }, auth_header(token)
 
       expect(last_response.status).to eq(404)
     end
@@ -152,15 +166,23 @@ RSpec.describe 'Records API', type: :api do
     end
 
     it 'deletes a record' do
-      delete_json "/api/records/#{record.id}", {}, auth_header(token)
+      delete_json "/api/records/#{record.id}", { version: 1 }, auth_header(token)
 
       expect(last_response.status).to eq(200)
       expect(json_body['message']).to include('Deleted')
     end
 
+    it 'returns 409 on version conflict' do
+      delete_json "/api/records/#{record.id}", { version: 99 }, auth_header(token)
+
+      expect(last_response.status).to eq(409)
+      expect(json_body['error']).to include('Version conflict')
+    end
+
     it 'returns 409 on precondition failure' do
       delete_json "/api/records/#{record.id}", {
-        preconditions: { 'state' => 'closed' }
+        preconditions: { 'state' => 'closed' },
+        version: 1
       }, auth_header(token)
 
       expect(last_response.status).to eq(409)

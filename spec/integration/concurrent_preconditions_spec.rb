@@ -23,10 +23,11 @@ RSpec.describe 'Concurrent preconditions' do
             record: record,
             state: 'closed',
             preconditions: { 'state' => 'open' },
+            expected_version: 1,
             user: user
           )
           results << :success
-        rescue SOT::MutationService::PreconditionFailed
+        rescue SOT::MutationService::PreconditionFailed, SOT::MutationService::VersionConflict
           results << :failed
         end
       end

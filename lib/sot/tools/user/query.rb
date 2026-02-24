@@ -59,7 +59,7 @@ module SOT
             state_info = record.state ? " [#{record.state}]" : ''
             return MCP::Tool::Response.new([{
               type: 'text',
-              text: "Record ##{record.id}#{state_info}: #{record.data}"
+              text: "Record ##{record.id} (v#{record.current_version})#{state_info}: #{record.data}"
             }])
           end
 
@@ -89,7 +89,7 @@ module SOT
 
           lines = records.map do |r|
             state_info = r.state ? " [#{r.state}]" : ''
-            "Record ##{r.id}#{state_info}: #{r.data}"
+            "Record ##{r.id} (v#{r.current_version})#{state_info}: #{r.data}"
           end
 
           count = SOT::QueryService.count(schema, filters: filters, search: search, state: params[:state])

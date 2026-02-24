@@ -13,6 +13,17 @@ module SOT
 
     class ValidationError < StandardError; end
 
+    class VersionConflict < StandardError
+      attr_reader :expected_version, :actual_version, :record
+
+      def initialize(expected_version:, actual_version:, record:)
+        @expected_version = expected_version
+        @actual_version = actual_version
+        @record = record
+        super("Version conflict: you provided version #{expected_version} but the record is now at version #{actual_version}. Re-fetch the record with sot_query to see the latest changes, then retry.")
+      end
+    end
+
     def self.create(schema:, data:, state: nil, user:)
       validate_data!(schema, data)
       state = resolve_initial_state(schema, state)
@@ -24,6 +35,7 @@ module SOT
           schema_id: schema.id,
           data: JSON.generate(data),
           state: state,
+          version: 1,
           created_by: user.id,
           updated_by: user.id
         )
@@ -43,7 +55,7 @@ module SOT
       record
     end
 
-    def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false, append_data: nil)
+    def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false, append_data: nil, expected_version: nil)
       schema = record.schema
 
       raise ValidationError, "Cannot set state on a stateless table" if state && !schema.stateful?
@@ -59,10 +71,29 @@ module SOT
         end
       end
 
+      # Determine if this is an append-only operation (no version check required)
+      append_only = append_data && !data && !state && !replace_data
+
+      unless append_only
+        raise ValidationError, "version is required for update (omit only for append-only operations)" if expected_version.nil?
+      end
+
       DB.transaction(mode: :immediate) do
         # Re-fetch inside transaction for atomicity (IMMEDIATE mode ensures write lock is held)
         fresh = Record.where(id: record.id).first
         raise ValidationError, "Record not found (may have been deleted)" unless fresh
+
+        # Version check (skip for append-only)
+        unless append_only
+          actual_version = fresh.current_version
+          unless actual_version == expected_version
+            raise VersionConflict.new(
+              expected_version: expected_version,
+              actual_version: actual_version,
+              record: fresh
+            )
+          end
+        end
 
         check_preconditions!(fresh, preconditions, schema)
 
@@ -94,6 +125,7 @@ module SOT
           updates[:data] = JSON.generate(resolved_data)
         end
         updates[:state] = state if state
+        updates[:version] = fresh.current_version + 1
         fresh.update(updates)
 
         after_data = resolved_data || before_data
@@ -114,13 +146,24 @@ module SOT
       end
     end
 
-    def self.delete(record:, preconditions: {}, user:)
+    def self.delete(record:, preconditions: {}, user:, expected_version: nil)
       schema = record.schema
+
+      raise ValidationError, "version is required for delete" if expected_version.nil?
 
       DB.transaction(mode: :immediate) do
         # Re-fetch inside transaction for atomicity (IMMEDIATE mode ensures write lock is held)
         fresh = Record.where(id: record.id).first
         raise ValidationError, "Record not found (may have been deleted)" unless fresh
+
+        actual_version = fresh.current_version
+        unless actual_version == expected_version
+          raise VersionConflict.new(
+            expected_version: expected_version,
+            actual_version: actual_version,
+            record: fresh
+          )
+        end
 
         check_preconditions!(fresh, preconditions, schema)
 

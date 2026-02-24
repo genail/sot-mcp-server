@@ -8,7 +8,7 @@ RSpec.describe 'GET /api/activity_log', type: :api do
 
   before do
     record = SOT::MutationService.create(schema: schema, data: { 'title' => 'Lock A' }, state: 'open', user: user)
-    SOT::MutationService.update(record: record, state: 'closed', preconditions: { 'state' => 'open' }, user: user)
+    SOT::MutationService.update(record: record, state: 'closed', preconditions: { 'state' => 'open' }, expected_version: 1, user: user)
   end
 
   it 'returns activity entries' do

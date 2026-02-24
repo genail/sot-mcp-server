@@ -44,15 +44,18 @@ RSpec.describe 'Full workflow', type: :api do
     # Step 4: Update with precondition (lock → unlock)
     patch_json "/api/records/#{record_id}", {
       state: 'unlocked',
-      preconditions: { 'state' => 'locked' }
+      preconditions: { 'state' => 'locked' },
+      version: 1
     }, auth_header(user_token)
     expect(last_response.status).to eq(200)
     expect(json_body['record']['state']).to eq('unlocked')
+    expect(json_body['record']['version']).to eq(2)
 
     # Step 5: Verify precondition fails on stale state
     patch_json "/api/records/#{record_id}", {
       state: 'locked',
-      preconditions: { 'state' => 'locked' }
+      preconditions: { 'state' => 'locked' },
+      version: 2
     }, auth_header(user_token)
     expect(last_response.status).to eq(409)
 
@@ -63,7 +66,7 @@ RSpec.describe 'Full workflow', type: :api do
     expect(actions).to include('create', 'update')
 
     # Step 7: Delete the record
-    delete_json "/api/records/#{record_id}", {}, auth_header(user_token)
+    delete_json "/api/records/#{record_id}", { version: 2 }, auth_header(user_token)
     expect(last_response.status).to eq(200)
 
     # Step 8: Verify deletion is in activity log

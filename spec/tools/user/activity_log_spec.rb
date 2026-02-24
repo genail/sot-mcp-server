@@ -6,7 +6,7 @@ RSpec.describe SOT::Tools::User::ActivityLogTool, type: :tool do
 
   before do
     @record = SOT::MutationService.create(schema: schema, data: { 'title' => 'Test' }, state: 'open', user: user)
-    SOT::MutationService.update(record: @record.reload, state: 'closed', user: user)
+    SOT::MutationService.update(record: @record.reload, state: 'closed', expected_version: 1, user: user)
   end
 
   describe '.call' do

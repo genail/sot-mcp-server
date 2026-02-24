@@ -21,5 +21,9 @@ module SOT
     def parsed_data=(hash)
       self.data = JSON.generate(hash)
     end
+
+    def current_version
+      version || 1
+    end
   end
 end

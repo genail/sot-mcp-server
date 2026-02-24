@@ -18,6 +18,15 @@ RSpec.describe SOT::MutationService do
       expect(record.created_by).to eq(user.id)
     end
 
+    it 'sets version to 1' do
+      record = described_class.create(
+        schema: stateless_schema,
+        data: { 'title' => 'Test' },
+        user: user
+      )
+      expect(record.current_version).to eq(1)
+    end
+
     it 'sets default state for stateful schemas' do
       record = described_class.create(
         schema: stateful_schema,
@@ -128,10 +137,90 @@ RSpec.describe SOT::MutationService do
       result = described_class.update(
         record: record,
         data: { 'title' => 'Updated' },
+        expected_version: 1,
         user: user2
       )
       expect(result.parsed_data['title']).to eq('Updated')
       expect(result.updated_by).to eq(user2.id)
+    end
+
+    it 'increments version on update' do
+      result = described_class.update(
+        record: record,
+        data: { 'title' => 'Updated' },
+        expected_version: 1,
+        user: user
+      )
+      expect(result.current_version).to eq(2)
+    end
+
+    it 'increments version on append-only update' do
+      text_schema = create(:table_schema, fields: JSON.generate([
+        { 'name' => 'title', 'type' => 'string', 'required' => true },
+        { 'name' => 'log', 'type' => 'text', 'required' => false }
+      ]))
+      rec = described_class.create(schema: text_schema, data: { 'title' => 'Task', 'log' => 'Line 1' }, user: user)
+      result = described_class.update(
+        record: rec,
+        append_data: { 'log' => "\nLine 2" },
+        user: user
+      )
+      expect(result.current_version).to eq(2)
+    end
+
+    it 'raises VersionConflict when version does not match' do
+      expect {
+        described_class.update(
+          record: record,
+          data: { 'title' => 'Updated' },
+          expected_version: 99,
+          user: user
+        )
+      }.to raise_error(SOT::MutationService::VersionConflict) do |e|
+        expect(e.expected_version).to eq(99)
+        expect(e.actual_version).to eq(1)
+      end
+    end
+
+    it 'raises ValidationError when version is missing for non-append update' do
+      expect {
+        described_class.update(
+          record: record,
+          data: { 'title' => 'Updated' },
+          user: user
+        )
+      }.to raise_error(SOT::MutationService::ValidationError, /version is required/)
+    end
+
+    it 'does not require version for append-only update' do
+      text_schema = create(:table_schema, fields: JSON.generate([
+        { 'name' => 'title', 'type' => 'string', 'required' => true },
+        { 'name' => 'log', 'type' => 'text', 'required' => false }
+      ]))
+      rec = described_class.create(schema: text_schema, data: { 'title' => 'Task', 'log' => 'Line 1' }, user: user)
+      expect {
+        described_class.update(
+          record: rec,
+          append_data: { 'log' => "\nLine 2" },
+          user: user
+        )
+      }.not_to raise_error
+    end
+
+    it 'requires version when append_data is combined with data' do
+      text_schema = create(:table_schema, fields: JSON.generate([
+        { 'name' => 'title', 'type' => 'string', 'required' => true },
+        { 'name' => 'log', 'type' => 'text', 'required' => false }
+      ]))
+      rec = described_class.create(schema: text_schema, data: { 'title' => 'Task', 'log' => 'Line 1' }, user: user)
+      expect {
+        described_class.update(
+          record: rec,
+          data: { 'title' => 'New' },
+          append_data: { 'log' => "\nLine 2" },
+          user: user
+        )
+      }.to raise_error(SOT::MutationService::ValidationError, /version is required/)
     end
 
     it 'removes fields set to null during merge' do
@@ -143,6 +232,7 @@ RSpec.describe SOT::MutationService do
       result = described_class.update(
         record: record_with_count,
         data: { 'count' => nil },
+        expected_version: 1,
         user: user
       )
       expect(result.parsed_data).to eq({ 'title' => 'Test' })
@@ -153,6 +243,7 @@ RSpec.describe SOT::MutationService do
         record: record,
         data: { 'title' => 'Replaced' },
         replace_data: true,
+        expected_version: 1,
         user: user2
       )
       expect(result.parsed_data).to eq({ 'title' => 'Replaced' })
@@ -162,6 +253,7 @@ RSpec.describe SOT::MutationService do
       result = described_class.update(
         record: record,
         state: 'closed',
+        expected_version: 1,
         user: user
       )
       expect(result.state).to eq('closed')
@@ -172,6 +264,7 @@ RSpec.describe SOT::MutationService do
         record: record,
         state: 'closed',
         preconditions: { 'state' => 'open' },
+        expected_version: 1,
         user: user
       )
       expect(result.state).to eq('closed')
@@ -183,6 +276,7 @@ RSpec.describe SOT::MutationService do
           record: record,
           state: 'closed',
           preconditions: { 'state' => 'closed' },
+          expected_version: 1,
           user: user
         )
       }.to raise_error(SOT::MutationService::PreconditionFailed) do |e|
@@ -197,6 +291,7 @@ RSpec.describe SOT::MutationService do
           record: record,
           data: { 'title' => 'New' },
           preconditions: { 'title' => 'Wrong' },
+          expected_version: 1,
           user: user
         )
       }.to raise_error(SOT::MutationService::PreconditionFailed)
@@ -207,6 +302,7 @@ RSpec.describe SOT::MutationService do
         record: record,
         data: { 'title' => 'New' },
         preconditions: { 'title' => 'Original' },
+        expected_version: 1,
         user: user
       )
       expect(result.parsed_data['title']).to eq('New')
@@ -218,12 +314,12 @@ RSpec.describe SOT::MutationService do
         data: { 'title' => 'Test' },
         user: user
       )
-      # 'count' field is not set → nil. Precondition expecting "" should fail.
       expect {
         described_class.update(
           record: record_with_nil,
           data: { 'title' => 'Updated' },
           preconditions: { 'count' => '' },
+          expected_version: 1,
           user: user
         )
       }.to raise_error(SOT::MutationService::PreconditionFailed)
@@ -239,6 +335,7 @@ RSpec.describe SOT::MutationService do
         described_class.update(
           record: stateless_record,
           state: 'anything',
+          expected_version: 1,
           user: user
         )
       }.to raise_error(SOT::MutationService::ValidationError, /Cannot set state/)
@@ -249,6 +346,7 @@ RSpec.describe SOT::MutationService do
         described_class.update(
           record: record,
           state: 'nonexistent',
+          expected_version: 1,
           user: user
         )
       }.to raise_error(SOT::MutationService::ValidationError, /Invalid state/)
@@ -299,6 +397,7 @@ RSpec.describe SOT::MutationService do
           record: text_record,
           data: { 'title' => 'Updated Task' },
           append_data: { 'log' => "\nLine 2" },
+          expected_version: 1,
           user: user
         )
         expect(result.parsed_data['title']).to eq('Updated Task')
@@ -311,6 +410,7 @@ RSpec.describe SOT::MutationService do
             record: text_record,
             data: { 'log' => 'replaced' },
             append_data: { 'log' => ' appended' },
+            expected_version: 1,
             user: user
           )
         }.to raise_error(SOT::MutationService::ValidationError, /both data and append_data/)
@@ -364,6 +464,7 @@ RSpec.describe SOT::MutationService do
         record: record,
         data: { 'title' => 'Updated' },
         state: 'closed',
+        expected_version: 1,
         user: user2
       )
       logs = SOT::ActivityLog.where(record_id: record.id, action: 'update').all
@@ -388,8 +489,20 @@ RSpec.describe SOT::MutationService do
 
     it 'deletes the record' do
       id = record.id
-      described_class.delete(record: record, user: user)
+      described_class.delete(record: record, expected_version: 1, user: user)
       expect(SOT::Record[id]).to be_nil
+    end
+
+    it 'raises VersionConflict on version mismatch' do
+      expect {
+        described_class.delete(record: record, expected_version: 99, user: user)
+      }.to raise_error(SOT::MutationService::VersionConflict)
+    end
+
+    it 'raises ValidationError when version is missing' do
+      expect {
+        described_class.delete(record: record, user: user)
+      }.to raise_error(SOT::MutationService::ValidationError, /version is required/)
     end
 
     it 'succeeds when preconditions match' do
@@ -397,6 +510,7 @@ RSpec.describe SOT::MutationService do
         described_class.delete(
           record: record,
           preconditions: { 'state' => 'open' },
+          expected_version: 1,
           user: user
         )
       }.not_to raise_error
@@ -407,6 +521,7 @@ RSpec.describe SOT::MutationService do
         described_class.delete(
           record: record,
           preconditions: { 'state' => 'closed' },
+          expected_version: 1,
           user: user
         )
       }.to raise_error(SOT::MutationService::PreconditionFailed)
@@ -414,7 +529,7 @@ RSpec.describe SOT::MutationService do
 
     it 'creates an activity log entry' do
       id = record.id
-      described_class.delete(record: record, user: user)
+      described_class.delete(record: record, expected_version: 1, user: user)
       logs = SOT::ActivityLog.where(schema_id: stateful_schema.id, action: 'delete').all
       expect(logs.length).to eq(1)
       changes = logs.first.parsed_changes
@@ -430,9 +545,9 @@ RSpec.describe SOT::MutationService do
         data: { 'title' => 'v1' },
         user: user
       )
-      described_class.update(record: record.reload, data: { 'title' => 'v2' }, user: user)
-      described_class.update(record: record.reload, data: { 'title' => 'v3' }, user: user)
-      described_class.delete(record: record.reload, user: user)
+      described_class.update(record: record.reload, data: { 'title' => 'v2' }, expected_version: 1, user: user)
+      described_class.update(record: record.reload, data: { 'title' => 'v3' }, expected_version: 2, user: user)
+      described_class.delete(record: record.reload, expected_version: 3, user: user)
 
       logs = SOT::ActivityLog.where(schema_id: stateful_schema.id).order(:id).all
       expect(logs.length).to eq(4)
