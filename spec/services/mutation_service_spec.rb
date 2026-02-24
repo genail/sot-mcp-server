@@ -18,6 +18,16 @@ RSpec.describe SOT::MutationService do
       expect(record.created_by).to eq(user.id)
     end
 
+    it 'handles symbol-keyed data from MCP gem without duplicate JSON keys' do
+      record = described_class.create(
+        schema: stateless_schema,
+        data: { title: 'Test' },
+        user: user
+      )
+      expect(record.parsed_data['title']).to eq('Test')
+      expect(record.data.scan('"title"').length).to eq(1)
+    end
+
     it 'sets version to 1' do
       record = described_class.create(
         schema: stateless_schema,
@@ -142,6 +152,18 @@ RSpec.describe SOT::MutationService do
       )
       expect(result.parsed_data['title']).to eq('Updated')
       expect(result.updated_by).to eq(user2.id)
+    end
+
+    it 'does not produce duplicate JSON keys when data has symbol keys (MCP gem sends symbols)' do
+      result = described_class.update(
+        record: record,
+        data: { title: 'Updated Title' },
+        expected_version: 1,
+        user: user
+      )
+      raw_json = result.data
+      occurrences = raw_json.scan('"title"').length
+      expect(occurrences).to eq(1), "Expected 'title' to appear once in raw JSON but found #{occurrences} times: #{raw_json}"
     end
 
     it 'increments version on update' do

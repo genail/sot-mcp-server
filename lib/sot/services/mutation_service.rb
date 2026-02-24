@@ -25,6 +25,7 @@ module SOT
     end
 
     def self.create(schema:, data:, state: nil, user:)
+      data = data.transform_keys(&:to_s) if data.is_a?(Hash)
       validate_data!(schema, data)
       state = resolve_initial_state(schema, state)
       validate_state!(schema, state) if state
@@ -61,6 +62,8 @@ module SOT
       raise ValidationError, "Cannot set state on a stateless table" if state && !schema.stateful?
       raise ValidationError, "data must be a Hash" if data && !data.is_a?(Hash)
       raise ValidationError, "append_data must be a Hash" if append_data && !append_data.is_a?(Hash)
+      data = data.transform_keys(&:to_s) if data
+      append_data = append_data.transform_keys(&:to_s) if append_data
       validate_state!(schema, state) if state
       validate_append_data!(schema, append_data) if append_data
 

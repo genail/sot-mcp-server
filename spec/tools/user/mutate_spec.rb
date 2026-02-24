@@ -95,6 +95,19 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
       expect(response_text(response)).to include('version is required')
     end
 
+    it 'does not modify the record when version is missing' do
+      original_data = record.parsed_data.dup
+      original_version = record.current_version
+
+      call_tool(described_class, user: user,
+                action: 'update', record_id: record.id,
+                data: { 'title' => 'Should Not Apply' })
+
+      refreshed = SOT::Record[record.id]
+      expect(refreshed.parsed_data).to eq(original_data)
+      expect(refreshed.current_version).to eq(original_version)
+    end
+
     it 'returns error with schema context on precondition failure' do
       response = call_tool(described_class, user: user,
                            action: 'update', record_id: record.id,
