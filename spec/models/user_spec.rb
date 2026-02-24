@@ -45,6 +45,12 @@ RSpec.describe SOT::User do
     it 'returns nil for empty token' do
       expect(SOT::User.authenticate('')).to be_nil
     end
+
+    it 'returns nil for inactive user with valid token' do
+      token = 'valid_token'
+      create(:user, :inactive, raw_token: token)
+      expect(SOT::User.authenticate(token)).to be_nil
+    end
   end
 
   describe '.create_with_token' do

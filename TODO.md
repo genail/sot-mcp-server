@@ -8,19 +8,14 @@ Update now merges by default. Null-to-delete supported. `replace_data: true` for
 ### ~~2. No fetch-record-by-ID~~ DONE
 `sot_query` now accepts `record_id` parameter.
 
-### 3. No way to promote/demote a user
-`UserService.update` exists but `sot_admin_manage_users` has no `update` action. Changing `is_admin` requires delete + recreate, which is blocked by FK constraints if the user has any activity.
-- `lib/sot/tools/admin/manage_users.rb`
-- `lib/sot/services/user_service.rb:7-10`
+### ~~3. No way to promote/demote a user~~ NOT NEEDED
+Admin endpoint is a separate kind of endpoint; promotion/demotion is not required.
 
-### 4. Delete user/schema suggests impossible cleanup
-Error messages say "reassign or delete those first" but no tool exists to delete/reassign activity log entries or records owned by a user. Dead-end workflow.
-- `lib/sot/tools/admin/manage_users.rb:77-82`
-- `lib/sot/tools/admin/manage_schema.rb:123-128`
+### ~~4. Delete user/schema suggests impossible cleanup~~ DONE
+Users now have `is_active` status. Deactivate/activate replaces delete. No FK issues.
 
-### 5. No activity log pagination or date filtering
-No `offset` parameter, no `since`/`until`. Entries beyond the `limit` are inaccessible. Admins can't answer "what happened yesterday?"
-- `lib/sot/tools/user/activity_log.rb`
+### ~~5. No activity log pagination or date filtering~~ PARTIALLY DONE
+Offset pagination added. Date filtering (`since`/`until`) still missing.
 
 ## Medium Severity
 
@@ -75,6 +70,5 @@ States are listed without indicating which is the default initial state.
 REST defaults to 50, MCP to 100.
 - `lib/sot/api_app.rb` vs `lib/sot/tools/user/query.rb`
 
-### 18. Query pagination doesn't indicate remaining pages
-Shows total count but no "showing X-Y of Z" message.
-- `lib/sot/tools/user/query.rb:69-75`
+### ~~18. Query pagination doesn't indicate remaining pages~~ DONE
+Shows "Showing X-Y of Z" with total count.

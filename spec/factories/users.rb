@@ -3,9 +3,14 @@ FactoryBot.define do
     sequence(:name) { |n| "user_#{n}" }
     token_hash { BCrypt::Password.create('default_test_token') }
     is_admin { false }
+    is_active { true }
 
     trait :admin do
       is_admin { true }
+    end
+
+    trait :inactive do
+      is_active { false }
     end
 
     # Use initialize_with to support raw_token transient

@@ -23,5 +23,14 @@ RSpec.describe SOT::Tools::User::ListUsers, type: :tool do
       text = response_text(response)
       expect(text).to start_with('Users:')
     end
+
+    it 'excludes inactive users' do
+      create(:user, name: 'alice')
+      create(:user, :inactive, name: 'deactivated')
+      response = call_tool(described_class)
+      text = response_text(response)
+      expect(text).to include('- alice')
+      expect(text).not_to include('deactivated')
+    end
   end
 end

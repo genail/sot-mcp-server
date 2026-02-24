@@ -28,38 +28,65 @@ RSpec.describe SOT::Tools::Admin::ManageUsers, type: :tool do
   end
 
   describe 'list action' do
-    it 'lists all users' do
+    it 'lists all users with status' do
       create(:user, name: 'bob')
+      create(:user, :inactive, name: 'charlie')
       response = call_tool(described_class, user: admin, action: 'list')
       text = response_text(response)
       expect(text).to include('bob')
+      expect(text).to include('status: active')
+      expect(text).to include('charlie')
+      expect(text).to include('status: inactive')
     end
   end
 
-  describe 'delete action' do
-    it 'deletes a user' do
-      create(:user, name: 'to_delete')
+  describe 'deactivate action' do
+    it 'deactivates a user' do
+      create(:user, name: 'to_deactivate')
       response = call_tool(described_class, user: admin,
-                           action: 'delete', name: 'to_delete')
+                           action: 'deactivate', name: 'to_deactivate')
       expect(response_error?(response)).to be_falsey
-      expect(SOT::User.first(name: 'to_delete')).to be_nil
+      expect(response_text(response)).to include('Deactivated')
+      expect(SOT::User.first(name: 'to_deactivate').is_active).to be false
     end
 
     it 'returns error for unknown user' do
       response = call_tool(described_class, user: admin,
-                           action: 'delete', name: 'nonexistent')
+                           action: 'deactivate', name: 'nonexistent')
       expect(response_error?(response)).to be true
     end
 
-    it 'returns error when user has associated records' do
-      worker = create(:user, name: 'worker')
-      schema = create(:table_schema)
-      SOT::MutationService.create(schema: schema, data: { 'title' => 'item' }, user: worker)
-
+    it 'returns error when user is already inactive' do
+      create(:user, :inactive, name: 'already_inactive')
       response = call_tool(described_class, user: admin,
-                           action: 'delete', name: 'worker')
+                           action: 'deactivate', name: 'already_inactive')
       expect(response_error?(response)).to be true
-      expect(response_text(response)).to include('Cannot delete')
+      expect(response_text(response)).to include('already inactive')
+    end
+  end
+
+  describe 'activate action' do
+    it 'reactivates a user' do
+      create(:user, :inactive, name: 'to_activate')
+      response = call_tool(described_class, user: admin,
+                           action: 'activate', name: 'to_activate')
+      expect(response_error?(response)).to be_falsey
+      expect(response_text(response)).to include('Reactivated')
+      expect(SOT::User.first(name: 'to_activate').is_active).to be true
+    end
+
+    it 'returns error for unknown user' do
+      response = call_tool(described_class, user: admin,
+                           action: 'activate', name: 'nonexistent')
+      expect(response_error?(response)).to be true
+    end
+
+    it 'returns error when user is already active' do
+      create(:user, name: 'already_active')
+      response = call_tool(described_class, user: admin,
+                           action: 'activate', name: 'already_active')
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('already active')
     end
   end
 

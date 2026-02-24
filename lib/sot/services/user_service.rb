@@ -9,8 +9,14 @@ module SOT
       user
     end
 
-    def self.delete(user)
-      user.destroy
+    def self.deactivate(user)
+      user.update(is_active: false)
+      user
+    end
+
+    def self.activate(user)
+      user.update(is_active: true)
+      user
     end
 
     def self.list

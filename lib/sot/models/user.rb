@@ -18,7 +18,10 @@ module SOT
     def self.authenticate(token)
       return nil if token.nil? || token.empty?
 
-      all.find { |u| BCrypt::Password.new(u.token_hash) == token }
+      user = all.find { |u| BCrypt::Password.new(u.token_hash) == token }
+      return nil if user && !user.is_active
+
+      user
     end
 
     def self.create_with_token(name:, is_admin: false)

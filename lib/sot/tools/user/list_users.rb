@@ -12,7 +12,7 @@ module SOT
         input_schema(properties: {})
 
         def self.call(server_context:, **params)
-          users = SOT::UserService.list
+          users = SOT::UserService.list.select(&:is_active)
 
           if users.empty?
             return MCP::Tool::Response.new([{ type: 'text', text: 'No users found.' }])
