@@ -21,7 +21,8 @@ module SOT
               enum: %w[create update delete],
               description: 'Filter by action type'
             },
-            limit: { type: 'integer', description: 'Max results (default 50)' }
+            limit: { type: 'integer', description: 'Max results (default 50)' },
+            offset: { type: 'integer', description: 'Pagination offset (default 0)' }
           },
         )
 
@@ -57,7 +58,11 @@ module SOT
           end
 
           dataset = dataset.where(action: params[:action]) if params[:action]
-          entries = dataset.limit(params[:limit] || 50).all
+
+          limit = params[:limit] || 50
+          offset = params[:offset] || 0
+          count = dataset.count
+          entries = dataset.limit(limit).offset(offset).all
 
           if entries.empty?
             return MCP::Tool::Response.new([{
@@ -76,9 +81,13 @@ module SOT
             "#{e.created_at} | #{user_name} | #{e.action} | #{entity_name}#{record_ref}\n  Changes: #{e.changes}"
           end
 
+          from = offset + 1
+          to = offset + entries.length
+          header = "Showing #{from}-#{to} of #{count} activity log entries:"
+
           MCP::Tool::Response.new([{
             type: 'text',
-            text: "Activity log (#{entries.length} entries):\n\n#{lines.join("\n\n")}"
+            text: "#{header}\n\n#{lines.join("\n\n")}"
           }])
         end
       end

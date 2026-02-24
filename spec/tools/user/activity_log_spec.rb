@@ -10,12 +10,12 @@ RSpec.describe SOT::Tools::User::ActivityLogTool, type: :tool do
   end
 
   describe '.call' do
-    it 'returns activity log entries' do
+    it 'returns activity log entries with pagination header' do
       response = call_tool(described_class, user: user)
       text = response_text(response)
       expect(text).to include('create')
       expect(text).to include('update')
-      expect(text).to include('Activity log (2 entries)')
+      expect(text).to include('Showing 1-2 of 2')
     end
 
     it 'filters by table' do
@@ -24,19 +24,29 @@ RSpec.describe SOT::Tools::User::ActivityLogTool, type: :tool do
 
       response = call_tool(described_class, user: user, table: 'org.locks')
       text = response_text(response)
-      expect(text).to include('2 entries')
+      expect(text).to include('Showing 1-2 of 2')
     end
 
     it 'filters by record_id' do
       response = call_tool(described_class, user: user, record_id: @record.id)
       text = response_text(response)
-      expect(text).to include('2 entries')
+      expect(text).to include('Showing 1-2 of 2')
     end
 
     it 'filters by action' do
       response = call_tool(described_class, user: user, action: 'create')
       text = response_text(response)
-      expect(text).to include('1 entries')
+      expect(text).to include('Showing 1-1 of 1')
+    end
+
+    it 'paginates with limit and offset' do
+      response = call_tool(described_class, user: user, limit: 1, offset: 0)
+      text = response_text(response)
+      expect(text).to include('Showing 1-1 of 2')
+
+      response2 = call_tool(described_class, user: user, limit: 1, offset: 1)
+      text2 = response_text(response2)
+      expect(text2).to include('Showing 2-2 of 2')
     end
 
     it 'returns error for unknown table' do

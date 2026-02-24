@@ -142,9 +142,10 @@ module SOT
       dataset = dataset.where(record_id: params[:record_id].to_i) if params[:record_id]
       dataset = dataset.where(action: params[:action]) if params[:action]
 
-      entries = dataset.limit((params[:limit] || 50).to_i).all
+      count = dataset.count
+      entries = dataset.limit((params[:limit] || 50).to_i).offset((params[:offset] || 0).to_i).all
 
-      json(entries: entries.map { |e| serialize_activity_log(e) })
+      json(entries: entries.map { |e| serialize_activity_log(e) }, total: count)
     end
 
     # --- Admin endpoints ---
