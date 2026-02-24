@@ -65,5 +65,26 @@ RSpec.describe SOT::Tools::User::Query, type: :tool do
       expect(response_error?(response)).to be true
       expect(response_text(response)).to include('not found')
     end
+
+    it 'searches by single term' do
+      response = call_tool(described_class, user: user, table: 'org.locks', search: 'alpha')
+      text = response_text(response)
+      expect(text).to include('Alpha')
+      expect(text).not_to include('Beta')
+    end
+
+    it 'searches by multiple terms (AND)' do
+      SOT::MutationService.create(schema: schema, data: { 'title' => 'Alpha Gamma' }, state: 'open', user: user)
+      response = call_tool(described_class, user: user, table: 'org.locks', search: ['alpha', 'gamma'])
+      text = response_text(response)
+      expect(text).to include('Alpha Gamma')
+      expect(text).to include('Showing 1-1 of 1')
+    end
+
+    it 'returns no records when search has no matches' do
+      response = call_tool(described_class, user: user, table: 'org.locks', search: 'nonexistent')
+      text = response_text(response)
+      expect(text).to include('No records found')
+    end
   end
 end

@@ -12,6 +12,8 @@ module SOT
           - update: Update existing record. Requires record_id. Provide data and/or state to change.
             Data is MERGED into the existing record — only the fields you provide are changed.
             To remove a field, set it to null. To fully replace all data, set replace_data to true.
+            To append text to an existing field value, use append_data instead of data.
+            Only string and text fields support append. A field cannot appear in both data and append_data.
           - delete: Delete a record. Requires record_id.
 
           Preconditions (for update/delete):
@@ -54,6 +56,11 @@ module SOT
             replace_data: {
               type: 'boolean',
               description: 'If true, data fully replaces existing data instead of merging (default false)'
+            },
+            append_data: {
+              type: 'object',
+              description: 'Key-value pairs to append to existing field values (string/text fields only)',
+              additionalProperties: { type: 'string' }
             }
           },
           required: ['action']
@@ -110,7 +117,8 @@ module SOT
             state: params[:state],
             preconditions: params[:preconditions] || {},
             user: user,
-            replace_data: params[:replace_data] || false
+            replace_data: params[:replace_data] || false,
+            append_data: params[:append_data]
           )
 
           state_info = result.state ? " [#{result.state}]" : ''

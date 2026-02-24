@@ -43,12 +43,21 @@ module SOT
       record
     end
 
-    def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false)
+    def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false, append_data: nil)
       schema = record.schema
 
       raise ValidationError, "Cannot set state on a stateless table" if state && !schema.stateful?
       raise ValidationError, "data must be a Hash" if data && !data.is_a?(Hash)
+      raise ValidationError, "append_data must be a Hash" if append_data && !append_data.is_a?(Hash)
       validate_state!(schema, state) if state
+      validate_append_data!(schema, append_data) if append_data
+
+      if data && append_data
+        overlap = data.keys.map(&:to_s) & append_data.keys.map(&:to_s)
+        unless overlap.empty?
+          raise ValidationError, "Fields cannot appear in both data and append_data: #{overlap.join(', ')}"
+        end
+      end
 
       DB.transaction(mode: :immediate) do
         # Re-fetch inside transaction for atomicity (IMMEDIATE mode ensures write lock is held)
@@ -70,6 +79,17 @@ module SOT
                             m.reject! { |_, v| v.nil? }
                             m
                           end
+        end
+
+        if append_data
+          resolved_data = (resolved_data || before_data).dup
+          append_data.each do |field, value|
+            existing = resolved_data[field.to_s]
+            resolved_data[field.to_s] = existing ? "#{existing}#{value}" : value.to_s
+          end
+        end
+
+        if resolved_data
           validate_data!(schema, resolved_data)
           updates[:data] = JSON.generate(resolved_data)
         end
@@ -157,6 +177,24 @@ module SOT
         else
           raise ValidationError, "Cannot set state on a stateless table" if state
           nil
+        end
+      end
+
+      APPENDABLE_TYPES = %w[string text].freeze
+
+      def validate_append_data!(schema, append_data)
+        raise ValidationError, "append_data must be a Hash" unless append_data.is_a?(Hash)
+
+        fields_by_name = schema.parsed_fields.each_with_object({}) { |f, h| h[f['name']] = f }
+        append_data.each_key do |field_name|
+          name = field_name.to_s
+          field_def = fields_by_name[name]
+          unless field_def
+            raise ValidationError, "Unknown field in append_data: #{name}"
+          end
+          unless APPENDABLE_TYPES.include?(field_def['type'])
+            raise ValidationError, "Cannot append to field '#{name}' of type '#{field_def['type']}'. Only #{APPENDABLE_TYPES.join(', ')} fields support append."
+          end
         end
       end
 

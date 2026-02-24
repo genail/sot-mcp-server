@@ -52,14 +52,18 @@ module SOT
         halt 400, json(error: "Unknown filter fields: #{unknown.join(', ')}. Valid fields: #{schema.all_field_names.join(', ')}")
       end
 
+      search = params[:search] ? JSON.parse(params[:search]) : []
+      search = Array(search)
+
       records = SOT::QueryService.list(
         schema,
         filters: filters,
+        search: search,
         state: params[:state],
         limit: (params[:limit] || 50).to_i,
         offset: (params[:offset] || 0).to_i
       )
-      count = SOT::QueryService.count(schema, filters: filters, state: params[:state])
+      count = SOT::QueryService.count(schema, filters: filters, search: search, state: params[:state])
 
       json(records: records.map { |r| serialize_record(r) }, total: count)
     rescue JSON::ParserError
@@ -97,7 +101,8 @@ module SOT
         state: data['state'],
         preconditions: data['preconditions'],
         user: current_user,
-        replace_data: data['replace_data'] || false
+        replace_data: data['replace_data'] || false,
+        append_data: data['append_data']
       )
 
       json(record: serialize_record(updated))

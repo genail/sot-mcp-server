@@ -50,6 +50,30 @@ RSpec.describe SOT::QueryService do
       results = described_class.list(schema, filters: { 'title' => 'Match' }, state: 'open')
       expect(results.length).to eq(1)
     end
+
+    it 'searches by single term (case-insensitive)' do
+      create_record(data: { 'title' => 'Staging DB' })
+      create_record(data: { 'title' => 'Production DB' })
+      results = described_class.list(schema, search: ['staging'])
+      expect(results.length).to eq(1)
+      expect(results.first.parsed_data['title']).to eq('Staging DB')
+    end
+
+    it 'searches by multiple terms with AND logic' do
+      create_record(data: { 'title' => 'Staging DB migration' })
+      create_record(data: { 'title' => 'Staging API deploy' })
+      create_record(data: { 'title' => 'Production DB migration' })
+      results = described_class.list(schema, search: ['staging', 'migration'])
+      expect(results.length).to eq(1)
+      expect(results.first.parsed_data['title']).to eq('Staging DB migration')
+    end
+
+    it 'combines search with filters and state' do
+      create_record(data: { 'title' => 'Staging DB' }, state: 'open')
+      create_record(data: { 'title' => 'Staging DB' }, state: 'closed')
+      results = described_class.list(schema, search: ['staging'], state: 'open')
+      expect(results.length).to eq(1)
+    end
   end
 
   describe '.count' do

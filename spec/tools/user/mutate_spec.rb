@@ -82,6 +82,29 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
       expect(text).to include('sot_feedback')
     end
 
+    it 'appends to a field with append_data' do
+      schema_with_log = create(:table_schema, namespace: 'org', name: 'tasks',
+                               fields: JSON.generate([
+                                 { 'name' => 'title', 'type' => 'string', 'required' => true },
+                                 { 'name' => 'log', 'type' => 'text', 'required' => false }
+                               ]))
+      rec = SOT::MutationService.create(schema: schema_with_log, data: { 'title' => 'Task', 'log' => 'Entry 1' }, user: user)
+      response = call_tool(described_class, user: user,
+                           action: 'update', record_id: rec.id,
+                           append_data: { 'log' => "\nEntry 2" })
+      expect(response_error?(response)).to be false
+      refreshed = SOT::Record[rec.id]
+      expect(refreshed.parsed_data['log']).to eq("Entry 1\nEntry 2")
+    end
+
+    it 'returns error when append_data targets non-text field' do
+      response = call_tool(described_class, user: user,
+                           action: 'update', record_id: record.id,
+                           append_data: { 'count' => '1' })
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('Cannot append')
+    end
+
     it 'returns error for missing record_id' do
       response = call_tool(described_class, user: user,
                            action: 'update', data: { 'title' => 'x' })

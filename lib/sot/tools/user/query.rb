@@ -12,6 +12,7 @@ module SOT
           - table (required): The table name, e.g., "org.locks" or just "locks"
           - record_id: Fetch a specific record by ID (returns one record, ignores filters/pagination)
           - filters: Hash of field_name => value for exact match filtering
+          - search: Text search across record data. String or array of strings. All terms must match (AND logic, case-insensitive).
           - state: Filter by current state
           - limit: Max records to return (default 100)
           - offset: Pagination offset (default 0)
@@ -27,6 +28,13 @@ module SOT
               type: 'object',
               description: 'Key-value pairs to filter by (exact match on data fields)',
               additionalProperties: { type: 'string' }
+            },
+            search: {
+              oneOf: [
+                { type: 'string' },
+                { type: 'array', items: { type: 'string' } }
+              ],
+              description: 'Text search across record data. String or array of strings — all must match (AND, case-insensitive).'
             },
             state: { type: 'string', description: 'Filter by state' },
             limit: { type: 'integer', description: 'Max results (default 100)' },
@@ -61,9 +69,12 @@ module SOT
             return error_response("Unknown filter fields: #{unknown.join(', ')}", schema: schema)
           end
 
+          search = Array(params[:search]).compact
+
           records = SOT::QueryService.list(
             schema,
             filters: filters,
+            search: search,
             state: params[:state],
             limit: params[:limit] || 100,
             offset: params[:offset] || 0
@@ -81,7 +92,7 @@ module SOT
             "Record ##{r.id}#{state_info}: #{r.data}"
           end
 
-          count = SOT::QueryService.count(schema, filters: filters, state: params[:state])
+          count = SOT::QueryService.count(schema, filters: filters, search: search, state: params[:state])
           limit = params[:limit] || 100
           offset = params[:offset] || 0
           from = offset + 1

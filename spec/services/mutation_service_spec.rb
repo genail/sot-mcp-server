@@ -254,6 +254,111 @@ RSpec.describe SOT::MutationService do
       }.to raise_error(SOT::MutationService::ValidationError, /Invalid state/)
     end
 
+    context 'with append_data' do
+      let(:text_schema) do
+        create(:table_schema, fields: JSON.generate([
+          { 'name' => 'title', 'type' => 'string', 'required' => true },
+          { 'name' => 'log', 'type' => 'text', 'required' => false },
+          { 'name' => 'count', 'type' => 'integer', 'required' => false }
+        ]))
+      end
+
+      let(:text_record) do
+        described_class.create(
+          schema: text_schema,
+          data: { 'title' => 'Task', 'log' => 'Line 1' },
+          user: user
+        )
+      end
+
+      it 'appends to an existing field value' do
+        result = described_class.update(
+          record: text_record,
+          append_data: { 'log' => "\nLine 2" },
+          user: user
+        )
+        expect(result.parsed_data['log']).to eq("Line 1\nLine 2")
+      end
+
+      it 'sets value when field is empty/nil' do
+        empty_record = described_class.create(
+          schema: text_schema,
+          data: { 'title' => 'Task' },
+          user: user
+        )
+        result = described_class.update(
+          record: empty_record,
+          append_data: { 'log' => 'First entry' },
+          user: user
+        )
+        expect(result.parsed_data['log']).to eq('First entry')
+      end
+
+      it 'works together with data (different fields)' do
+        result = described_class.update(
+          record: text_record,
+          data: { 'title' => 'Updated Task' },
+          append_data: { 'log' => "\nLine 2" },
+          user: user
+        )
+        expect(result.parsed_data['title']).to eq('Updated Task')
+        expect(result.parsed_data['log']).to eq("Line 1\nLine 2")
+      end
+
+      it 'raises when same field appears in both data and append_data' do
+        expect {
+          described_class.update(
+            record: text_record,
+            data: { 'log' => 'replaced' },
+            append_data: { 'log' => ' appended' },
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /both data and append_data/)
+      end
+
+      it 'raises for non-appendable field types' do
+        expect {
+          described_class.update(
+            record: text_record,
+            append_data: { 'count' => '1' },
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /Cannot append.*count.*integer/)
+      end
+
+      it 'raises for unknown fields in append_data' do
+        expect {
+          described_class.update(
+            record: text_record,
+            append_data: { 'nonexistent' => 'value' },
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /Unknown field/)
+      end
+
+      it 'raises when append_data is not a Hash' do
+        expect {
+          described_class.update(
+            record: text_record,
+            append_data: 'not a hash',
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /must be a Hash/)
+      end
+
+      it 'records correct before/after in activity log' do
+        described_class.update(
+          record: text_record,
+          append_data: { 'log' => "\nLine 2" },
+          user: user
+        )
+        logs = SOT::ActivityLog.where(record_id: text_record.id, action: 'update').all
+        changes = logs.last.parsed_changes
+        expect(changes['before']['data']['log']).to eq('Line 1')
+        expect(changes['after']['data']['log']).to eq("Line 1\nLine 2")
+      end
+    end
+
     it 'creates an activity log entry with before/after diff' do
       described_class.update(
         record: record,
