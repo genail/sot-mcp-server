@@ -6,7 +6,7 @@ module SOT
 
         description <<~DESC
           Query records of a specific table, or fetch a single record by ID.
-          Use sot_list_tables first to discover available tables and their field names.
+          Use sot_describe_tables first to discover available tables and their field names.
 
           Parameters:
           - table (required): The table name, e.g., "org.locks" or just "locks"
@@ -16,7 +16,7 @@ module SOT
           - limit: Max records to return (default 100)
           - offset: Pagination offset (default 0)
 
-          DO NOT use field names not defined in the schema. Call sot_list_tables first.
+          DO NOT use field names not defined in the schema. Call sot_describe_tables first.
         DESC
 
         input_schema(
@@ -39,7 +39,7 @@ module SOT
           schema = SOT::SchemaService.resolve(params[:table])
           unless schema
             return error_response("Table '#{params[:table]}' not found.",
-                                  hint: 'Use sot_list_tables to see available tables.')
+                                  hint: 'Use sot_describe_tables to see available tables.')
           end
 
           # Single record lookup by ID

@@ -36,7 +36,7 @@ RSpec.describe SOT::Tools::User::Query, type: :tool do
       response = call_tool(described_class, user: user, table: 'nonexistent')
       expect(response_error?(response)).to be true
       expect(response_text(response)).to include("not found")
-      expect(response_text(response)).to include('sot_list_tables')
+      expect(response_text(response)).to include('sot_describe_tables')
     end
 
     it 'returns error for unknown filter field' do

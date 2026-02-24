@@ -33,7 +33,7 @@ module SOT
             unless schema
               text = SOT::ErrorFormatter.format(
                 "Table '#{params[:table]}' not found.",
-                hint: 'Use sot_list_tables to see available tables.'
+                hint: 'Use sot_describe_tables to see available tables.'
               )
               return MCP::Tool::Response.new([{ type: 'text', text: text }], error: true)
             end

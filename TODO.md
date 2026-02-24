@@ -67,9 +67,9 @@ No delete action, `resolved` is one-way. Duplicates or mistakes can't be cleaned
 No range queries, partial matching, or multi-value filters. Integer/float fields can't be queried numerically.
 - `lib/sot/services/query_service.rb:8-13`
 
-### 16. Default state not marked in `sot_list_tables`
+### 16. Default state not marked in `sot_describe_tables`
 States are listed without indicating which is the default initial state.
-- `lib/sot/tools/user/list_tables.rb`
+- `lib/sot/tools/user/describe_tables.rb`
 
 ### 17. Inconsistent default limits
 REST defaults to 50, MCP to 100.

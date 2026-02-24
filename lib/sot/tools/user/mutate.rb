@@ -77,7 +77,7 @@ module SOT
         def self.handle_create(params, user)
           schema = SOT::SchemaService.resolve(params[:table])
           return error_response("Table '#{params[:table]}' not found.",
-                                hint: 'Use sot_list_tables to see available tables.') unless schema
+                                hint: 'Use sot_describe_tables to see available tables.') unless schema
           return error_response("'data' is required for create.", schema: schema) unless params[:data]
 
           record = SOT::MutationService.create(

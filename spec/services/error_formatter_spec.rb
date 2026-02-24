@@ -43,8 +43,8 @@ RSpec.describe SOT::ErrorFormatter do
     end
 
     it 'includes hint when provided' do
-      result = described_class.format('error', hint: 'Try using sot_list_tables first')
-      expect(result).to include('Hint: Try using sot_list_tables first')
+      result = described_class.format('error', hint: 'Try using sot_describe_tables first')
+      expect(result).to include('Hint: Try using sot_describe_tables first')
     end
 
     it 'works with minimal arguments' do

@@ -37,7 +37,7 @@ Three Rack-mounted paths, each behind `TokenAuth` middleware (Bearer token + BCr
 ### Layers
 
 - **Middleware** (`lib/sot/middleware/`) — `TokenAuth` authenticates and sets `env['sot.current_user']`; `AdminGate` checks `is_admin`.
-- **MCP Tools** (`lib/sot/tools/`) — Inherit from `MCP::Tool`. Each defines `tool_name`, `description`, `input_schema`, and `self.call(server_context:, **params)`. User tools: `sot_query`, `sot_mutate`, `sot_list_tables`, `sot_activity_log`, `sot_feedback`. Admin tools: `sot_admin_manage_schema`, `sot_admin_manage_users`, `sot_admin_view_feedback`.
+- **MCP Tools** (`lib/sot/tools/`) — Inherit from `MCP::Tool`. Each defines `tool_name`, `description`, `input_schema`, and `self.call(server_context:, **params)`. User tools: `sot_query`, `sot_mutate`, `sot_describe_tables`, `sot_activity_log`, `sot_feedback`. Admin tools: `sot_admin_manage_schema`, `sot_admin_manage_users`, `sot_admin_view_feedback`.
 - **Services** (`lib/sot/services/`) — Stateless business logic. `MutationService` wraps writes in transactions with precondition checks and activity logging. `QueryService` uses SQLite `json_extract()` for filtering JSON fields. `SchemaService` validates field types (`string`, `integer`, `float`, `boolean`, `text`).
 - **Models** (`lib/sot/models/`) — Sequel models mapped to underscore-prefixed tables (`_users`, `_schemas`, `_records`, `_activity_log`, `_feedback`). `User.authenticate(token)` does BCrypt compare. `Schema` parses JSON `fields`/`states` columns. `Record` stores data as JSON.
 
