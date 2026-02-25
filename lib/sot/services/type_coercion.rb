@@ -22,6 +22,8 @@ module SOT
         coerce_float(value, field_name)
       when 'boolean'
         coerce_boolean(value, field_name)
+      when 'date'
+        coerce_date(value, field_name)
       when 'datetime'
         coerce_datetime(value, field_name)
       when 'user'
@@ -96,6 +98,25 @@ module SOT
         return 'false' if %w[false 0 no].include?(str)
 
         raise CoercionError, "Field '#{field_name}': cannot coerce #{value.inspect} to boolean (accepted: true/false, 1/0, yes/no)"
+      end
+
+      def coerce_date(value, field_name)
+        str = value.to_s.strip
+        raise CoercionError, "Field '#{field_name}': date string is blank" if str.empty?
+
+        # Accept YYYY-MM-DD format only for unambiguous dates
+        unless str.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+          raise CoercionError, "Field '#{field_name}': date must be in YYYY-MM-DD format (got #{str.inspect})"
+        end
+
+        # Validate it's a real calendar date
+        begin
+          Date.parse(str)
+        rescue Date::Error, ArgumentError => e
+          raise CoercionError, "Field '#{field_name}': invalid date #{str.inspect} — #{e.message}"
+        end
+
+        str
       end
 
       def coerce_datetime(value, field_name)

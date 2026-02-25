@@ -140,6 +140,60 @@ RSpec.describe SOT::TypeCoercion do
       end
     end
 
+    context 'date type' do
+      it 'accepts valid YYYY-MM-DD' do
+        expect(described_class.coerce('2026-02-25', 'date', field_name: 'f')).to eq('2026-02-25')
+      end
+
+      it 'accepts leap year Feb 29' do
+        expect(described_class.coerce('2024-02-29', 'date', field_name: 'f')).to eq('2024-02-29')
+      end
+
+      it 'coerces nil to nil' do
+        expect(described_class.coerce(nil, 'date', field_name: 'f')).to be_nil
+      end
+
+      it 'rejects non-leap year Feb 29' do
+        expect {
+          described_class.coerce('2026-02-29', 'date', field_name: 'f')
+        }.to raise_error(SOT::TypeCoercion::CoercionError, /invalid date/)
+      end
+
+      it 'rejects Feb 30' do
+        expect {
+          described_class.coerce('2026-02-30', 'date', field_name: 'f')
+        }.to raise_error(SOT::TypeCoercion::CoercionError, /invalid date/)
+      end
+
+      it 'rejects blank string' do
+        expect {
+          described_class.coerce('', 'date', field_name: 'f')
+        }.to raise_error(SOT::TypeCoercion::CoercionError, /blank/)
+      end
+
+      it 'rejects date with time component' do
+        expect {
+          described_class.coerce('2026-02-25T15:00:00', 'date', field_name: 'f')
+        }.to raise_error(SOT::TypeCoercion::CoercionError, /YYYY-MM-DD/)
+      end
+
+      it 'rejects ambiguous formats like MM/DD/YYYY' do
+        expect {
+          described_class.coerce('02/25/2026', 'date', field_name: 'f')
+        }.to raise_error(SOT::TypeCoercion::CoercionError, /YYYY-MM-DD/)
+      end
+
+      it 'rejects text' do
+        expect {
+          described_class.coerce('tomorrow', 'date', field_name: 'due')
+        }.to raise_error(SOT::TypeCoercion::CoercionError, /YYYY-MM-DD/)
+      end
+
+      it 'strips whitespace' do
+        expect(described_class.coerce('  2026-02-25  ', 'date', field_name: 'f')).to eq('2026-02-25')
+      end
+    end
+
     context 'datetime type' do
       it 'parses ISO 8601 with Z' do
         expect(described_class.coerce('2026-02-25T15:00:00Z', 'datetime', field_name: 'f')).to eq('2026-02-25T15:00:00Z')

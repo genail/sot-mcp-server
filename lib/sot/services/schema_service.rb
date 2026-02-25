@@ -1,6 +1,6 @@
 module SOT
   class SchemaService
-    VALID_FIELD_TYPES = %w[string integer float boolean text datetime user].freeze
+    VALID_FIELD_TYPES = %w[string integer float boolean text date datetime user].freeze
 
     def self.validate_fields!(fields_array)
       raise ArgumentError, "fields must be an array" unless fields_array.is_a?(Array)
