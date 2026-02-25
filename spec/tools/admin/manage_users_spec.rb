@@ -100,4 +100,72 @@ RSpec.describe SOT::Tools::Admin::ManageUsers, type: :tool do
       expect(text).to include('New token')
     end
   end
+
+  describe 'rename action' do
+    it 'renames a user' do
+      create(:user, name: 'alice')
+      response = call_tool(described_class, user: admin,
+                           action: 'rename', name: 'alice', new_name: 'alice_new')
+      expect(response_error?(response)).to be_falsey
+      expect(response_text(response)).to include("Renamed user 'alice' to 'alice_new'")
+      expect(SOT::User.first(name: 'alice_new')).not_to be_nil
+      expect(SOT::User.first(name: 'alice')).to be_nil
+    end
+
+    it 'cascades rename to user-type fields' do
+      alice = create(:user, name: 'alice')
+      schema = create(:table_schema, fields: JSON.generate([
+        { 'name' => 'title', 'type' => 'string', 'required' => true },
+        { 'name' => 'assignee', 'type' => 'user', 'required' => false }
+      ]))
+      record = SOT::MutationService.create(
+        schema: schema,
+        data: { 'title' => 'Task', 'assignee' => 'alice' },
+        user: admin
+      )
+
+      call_tool(described_class, user: admin,
+                action: 'rename', name: 'alice', new_name: 'alice_renamed')
+
+      expect(record.reload.parsed_data['assignee']).to eq('alice_renamed')
+    end
+
+    it 'attributes cascade activity log entries to the admin user' do
+      alice = create(:user, name: 'alice')
+      schema = create(:table_schema, fields: JSON.generate([
+        { 'name' => 'title', 'type' => 'string', 'required' => true },
+        { 'name' => 'assignee', 'type' => 'user', 'required' => false }
+      ]))
+      record = SOT::MutationService.create(
+        schema: schema,
+        data: { 'title' => 'Task', 'assignee' => 'alice' },
+        user: admin
+      )
+
+      call_tool(described_class, user: admin,
+                action: 'rename', name: 'alice', new_name: 'alice_renamed')
+
+      cascade_log = SOT::ActivityLog.where(record_id: record.id, action: 'update').order(:id).last
+      expect(cascade_log.user_id).to eq(admin.id)
+    end
+
+    it 'returns error without name' do
+      response = call_tool(described_class, user: admin,
+                           action: 'rename', new_name: 'new')
+      expect(response_error?(response)).to be true
+    end
+
+    it 'returns error without new_name' do
+      create(:user, name: 'alice')
+      response = call_tool(described_class, user: admin,
+                           action: 'rename', name: 'alice')
+      expect(response_error?(response)).to be true
+    end
+
+    it 'returns error for unknown user' do
+      response = call_tool(described_class, user: admin,
+                           action: 'rename', name: 'nonexistent', new_name: 'new')
+      expect(response_error?(response)).to be true
+    end
+  end
 end

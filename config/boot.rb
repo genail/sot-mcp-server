@@ -15,6 +15,7 @@ require_relative '../lib/sot/models/feedback'
 
 # Services
 require_relative '../lib/sot/services/error_formatter'
+require_relative '../lib/sot/services/type_coercion'
 require_relative '../lib/sot/services/schema_service'
 require_relative '../lib/sot/services/query_service'
 require_relative '../lib/sot/services/mutation_service'

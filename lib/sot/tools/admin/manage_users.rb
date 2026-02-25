@@ -13,16 +13,18 @@ module SOT
           - deactivate: Deactivate a user by name. They will no longer be able to authenticate.
           - activate: Reactivate a previously deactivated user.
           - regenerate_token: Generate a new token for a user. Returns the new token.
+          - rename: Rename a user. Automatically updates all user-type fields referencing the old name across all records.
         DESC
 
         input_schema(
           properties: {
             action: {
               type: 'string',
-              enum: %w[create list deactivate activate regenerate_token],
+              enum: %w[create list deactivate activate regenerate_token rename],
               description: 'The management action'
             },
-            name: { type: 'string', description: 'User name (required for create/deactivate/activate/regenerate_token)' },
+            name: { type: 'string', description: 'User name (required for create/deactivate/activate/regenerate_token/rename)' },
+            new_name: { type: 'string', description: 'New name for the user (required for rename)' },
             is_admin: { type: 'boolean', description: 'Whether the user is an admin (for create, default false)' }
           },
           required: ['action']
@@ -35,6 +37,7 @@ module SOT
           when 'deactivate' then handle_deactivate(params)
           when 'activate' then handle_activate(params)
           when 'regenerate_token' then handle_regenerate(params)
+          when 'rename' then handle_rename(params, server_context)
           else
             MCP::Tool::Response.new([{ type: 'text', text: "Unknown action '#{params[:action]}'." }], error: true)
           end
@@ -110,6 +113,26 @@ module SOT
             type: 'text',
             text: "Regenerated token for '#{user.name}'.\nNew token (save this, it won't be shown again): #{token}"
           }])
+        end
+
+        def self.handle_rename(params, server_context)
+          return MCP::Tool::Response.new([{ type: 'text', text: "'name' is required." }], error: true) unless params[:name]
+          return MCP::Tool::Response.new([{ type: 'text', text: "'new_name' is required." }], error: true) unless params[:new_name]
+
+          user = SOT::UserService.find_by_name(params[:name])
+          return MCP::Tool::Response.new([{ type: 'text', text: "User '#{params[:name]}' not found." }], error: true) unless user
+
+          admin_user = server_context && server_context[:user]
+
+          SOT::UserService.rename(user, new_name: params[:new_name], admin_user: admin_user)
+          MCP::Tool::Response.new([{
+            type: 'text',
+            text: "Renamed user '#{params[:name]}' to '#{params[:new_name]}'. All user-type field references have been updated."
+          }])
+        rescue ArgumentError => e
+          MCP::Tool::Response.new([{ type: 'text', text: "Error: #{e.message}" }], error: true)
+        rescue Sequel::ValidationFailed => e
+          MCP::Tool::Response.new([{ type: 'text', text: "Error: #{e.message}" }], error: true)
         end
       end
     end

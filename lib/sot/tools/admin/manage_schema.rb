@@ -12,7 +12,7 @@ module SOT
           - update: Modify an existing table. Requires table. Provide fields to change.
           - delete: Remove a table and all its records. Requires table.
 
-          Fields format: Array of { "name": "...", "type": "string|integer|float|boolean|text", "description": "...", "required": true/false }
+          Fields format: Array of { "name": "...", "type": "string|integer|float|boolean|text|datetime|user", "description": "...", "required": true/false }
           States format: Array of { "name": "...", "description": "..." } (omit for stateless tables)
 
           IMPORTANT: Always provide clear descriptions for the table, each field, and each state.
@@ -40,7 +40,7 @@ module SOT
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  type: { type: 'string', enum: %w[string integer float boolean text] },
+                  type: { type: 'string', enum: %w[string integer float boolean text datetime user] },
                   description: { type: 'string' },
                   required: { type: 'boolean' }
                 }

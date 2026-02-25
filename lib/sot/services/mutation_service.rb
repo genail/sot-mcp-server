@@ -27,6 +27,7 @@ module SOT
     def self.create(schema:, data:, state: nil, user:)
       data = data.transform_keys(&:to_s) if data.is_a?(Hash)
       validate_data!(schema, data)
+      data = coerce_data!(schema, data)
       state = resolve_initial_state(schema, state)
       validate_state!(schema, state) if state
 
@@ -64,8 +65,9 @@ module SOT
       raise ValidationError, "append_data must be a Hash" if append_data && !append_data.is_a?(Hash)
       data = data.transform_keys(&:to_s) if data
       append_data = append_data.transform_keys(&:to_s) if append_data
-      validate_state!(schema, state) if state
       validate_append_data!(schema, append_data) if append_data
+      data = coerce_data!(schema, data) if data
+      validate_state!(schema, state) if state
 
       if data && append_data
         overlap = data.keys.map(&:to_s) & append_data.keys.map(&:to_s)
@@ -192,6 +194,12 @@ module SOT
 
     class << self
       private
+
+      def coerce_data!(schema, data)
+        SOT::TypeCoercion.coerce_data(data, schema)
+      rescue SOT::TypeCoercion::CoercionError => e
+        raise ValidationError, e.message
+      end
 
       def validate_data!(schema, data)
         raise ValidationError, "data must be a Hash" unless data.is_a?(Hash)
