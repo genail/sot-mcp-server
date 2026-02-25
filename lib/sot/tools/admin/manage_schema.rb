@@ -40,7 +40,7 @@ module SOT
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  type: { type: 'string', enum: %w[string integer float boolean text datetime user] },
+                  type: { type: 'string', enum: %w[string integer float boolean text date datetime user] },
                   description: { type: 'string' },
                   required: { type: 'boolean' }
                 }
