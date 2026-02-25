@@ -79,12 +79,15 @@ RSpec.describe SOT::Tools::User::Query, type: :tool do
       expect(text).not_to include('Beta')
     end
 
-    it 'searches by multiple terms (AND)' do
+    it 'searches by multiple terms with OR logic ranked by relevance' do
       SOT::MutationService.create(schema: schema, data: { 'title' => 'Alpha Gamma' }, state: 'open', user: user)
       response = call_tool(described_class, user: user, table: 'org.locks', search: ['alpha', 'gamma'])
       text = response_text(response)
-      expect(text).to include('Alpha Gamma')
-      expect(text).to include('Showing 1-1 of 1')
+      # Alpha Gamma matches both terms (highest relevance), Alpha matches one
+      expect(text).to include('Showing 1-2 of 2')
+      lines = text.split("\n").reject(&:empty?)
+      # First result should be the one matching both terms
+      expect(lines[1]).to include('Alpha Gamma')
     end
 
     it 'returns no records when search has no matches' do

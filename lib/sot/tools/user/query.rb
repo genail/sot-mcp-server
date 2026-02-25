@@ -12,7 +12,7 @@ module SOT
           - table (required): The table name, e.g., "org.locks" or just "locks"
           - record_id: Fetch a specific record by ID (returns one record, ignores filters/pagination)
           - filters: Hash of field_name => value for exact match filtering
-          - search: Text search across record data. String or array of strings. All terms must match (AND logic, case-insensitive).
+          - search: Text search across record data. Use 3+ specific terms for best results (e.g., "deployment staging migration" not just "deployment"). Results ranked by relevance — records matching more terms appear first. Case-insensitive.
           - state: Filter by current state
           - limit: Max records to return (default 100)
           - offset: Pagination offset (default 0)
@@ -34,7 +34,7 @@ module SOT
                 { type: 'string' },
                 { type: 'array', items: { type: 'string' } }
               ],
-              description: 'Text search across record data. String or array of strings — all must match (AND, case-insensitive).'
+              description: 'Text search across record data. Use 3+ specific terms for best results. Results ranked by relevance (most matching terms first). Case-insensitive.'
             },
             state: { type: 'string', description: 'Filter by state' },
             limit: { type: 'integer', description: 'Max results (default 100)' },
@@ -69,7 +69,7 @@ module SOT
             return error_response("Unknown filter fields: #{unknown.join(', ')}", schema: schema)
           end
 
-          search = Array(params[:search]).compact
+          search = params[:search]
 
           records = SOT::QueryService.list(
             schema,

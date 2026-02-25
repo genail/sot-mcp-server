@@ -59,13 +59,30 @@ RSpec.describe SOT::QueryService do
       expect(results.first.parsed_data['title']).to eq('Staging DB')
     end
 
-    it 'searches by multiple terms with AND logic' do
+    it 'searches by multiple terms with OR logic ranked by relevance' do
       create_record(data: { 'title' => 'Staging DB migration' })
       create_record(data: { 'title' => 'Staging API deploy' })
       create_record(data: { 'title' => 'Production DB migration' })
       results = described_class.list(schema, search: ['staging', 'migration'])
-      expect(results.length).to eq(1)
+      expect(results.length).to eq(3)
+      # Record matching both terms ranked first
       expect(results.first.parsed_data['title']).to eq('Staging DB migration')
+    end
+
+    it 'splits a single search string into terms' do
+      create_record(data: { 'title' => 'Staging DB migration' })
+      create_record(data: { 'title' => 'Staging API deploy' })
+      results = described_class.list(schema, search: 'staging migration')
+      expect(results.length).to eq(2)
+      expect(results.first.parsed_data['title']).to eq('Staging DB migration')
+    end
+
+    it 'filters stopwords from search terms' do
+      create_record(data: { 'title' => 'Staging DB' })
+      create_record(data: { 'title' => 'Production DB' })
+      results = described_class.list(schema, search: 'the staging')
+      expect(results.length).to eq(1)
+      expect(results.first.parsed_data['title']).to eq('Staging DB')
     end
 
     it 'combines search with filters and state' do
