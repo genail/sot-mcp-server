@@ -136,6 +136,13 @@ module SOT
       halt 422, json(error: e.message)
     end
 
+    # --- Users ---
+
+    get '/users' do
+      users = SOT::UserService.list.select(&:is_active)
+      json(users: users.map { |u| { id: u.id, name: u.name } })
+    end
+
     # --- Activity log ---
 
     get '/activity_log' do
