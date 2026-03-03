@@ -14,6 +14,11 @@ ADMIN_TOOLS = [
   SOT::Tools::Admin::ManageSchema,
   SOT::Tools::Admin::ManageUsers,
   SOT::Tools::Admin::ViewFeedback,
+  SOT::Tools::User::DescribeTables,
+  SOT::Tools::User::Query,
+  SOT::Tools::User::ActivityLogTool,
+  SOT::Tools::User::ListUsers,
+  SOT::Tools::User::Whoami,
 ].freeze
 
 app = Rack::Builder.new do
