@@ -5,11 +5,11 @@ module SOT
         tool_name 'sot_query'
 
         description <<~DESC
-          Query records of a specific table, or fetch a single record by ID.
+          Query records from one or more tables, or fetch a single record by ID.
           Use sot_describe_tables first to discover available tables and their field names.
 
           Parameters:
-          - table (required): The table name, e.g., "org.locks" or just "locks"
+          - table (required): Table name or array of table names, e.g., "org.locks" or ["org.locks", "org.docs"]. When multiple tables are specified, filters and state must be valid for all of them.
           - record_id: Fetch a specific record by ID (returns one record, ignores filters/pagination)
           - filters: Hash of field_name => value for exact match filtering
           - search: Text search across record data. Use 3+ specific terms for best results (e.g., "deployment staging migration" not just "deployment"). Results ranked by relevance — records matching more terms appear first. Case-insensitive.
@@ -22,7 +22,13 @@ module SOT
 
         input_schema(
           properties: {
-            table: { type: 'string', description: 'Table name, e.g. "org.locks"' },
+            table: {
+              oneOf: [
+                { type: 'string' },
+                { type: 'array', items: { type: 'string' }, minItems: 1 }
+              ],
+              description: 'Table name or array of table names, e.g. "org.locks" or ["org.locks", "org.docs"]'
+            },
             record_id: { type: 'integer', description: 'Fetch a single record by ID' },
             filters: {
               type: 'object',
@@ -44,60 +50,100 @@ module SOT
         )
 
         def self.call(server_context:, **params)
-          schema = SOT::SchemaService.resolve(params[:table])
-          unless schema
-            return error_response("Table '#{params[:table]}' not found.",
-                                  hint: 'Use sot_describe_tables to see available tables.')
+          table_names = Array(params[:table]).uniq
+
+          # Resolve all tables
+          resolved = SOT::SchemaService.resolve_many(table_names)
+          not_found = resolved.select { |_, v| v.nil? }.keys
+          unless not_found.empty?
+            return error_response(
+              "Table(s) not found: #{not_found.join(', ')}.",
+              hint: 'Use sot_describe_tables to see available tables.'
+            )
           end
+          schemas = resolved.values
 
           # Single record lookup by ID
           if params[:record_id]
-            record = SOT::QueryService.find(schema, params[:record_id])
+            record = SOT::QueryService.find(params[:record_id])
             unless record
-              return error_response("Record ##{params[:record_id]} not found in #{schema.full_name}.")
+              return error_response("Record ##{params[:record_id]} not found.")
             end
+            table_name = record.schema.full_name
             state_info = record.state ? " [#{record.state}]" : ''
             return MCP::Tool::Response.new([{
               type: 'text',
-              text: "Record ##{record.id} (v#{record.current_version})#{state_info}: #{record.data}"
+              text: "Record ##{record.id} (v#{record.current_version})#{state_info} in #{table_name}: #{record.data}"
             }])
           end
 
+          # Validate filters against ALL schemas
           filters = params[:filters] || {}
-          unknown = filters.keys.map(&:to_s) - schema.all_field_names
-          unless unknown.empty?
-            return error_response("Unknown filter fields: #{unknown.join(', ')}", schema: schema)
+          unless filters.empty?
+            schemas.each do |s|
+              unknown = filters.keys.map(&:to_s) - s.all_field_names
+              unless unknown.empty?
+                return error_response(
+                  "Filter field(s) #{unknown.join(', ')} not found in table '#{s.full_name}'.",
+                  schema: s
+                )
+              end
+            end
           end
 
+          # Validate state filter against ALL schemas
+          if params[:state]
+            schemas.each do |s|
+              unless s.stateful?
+                return error_response(
+                  "Cannot filter by state: table '#{s.full_name}' is stateless.",
+                  schema: s
+                )
+              end
+              unless s.valid_state?(params[:state])
+                return error_response(
+                  "State '#{params[:state]}' is not valid for table '#{s.full_name}'.",
+                  schema: s
+                )
+              end
+            end
+          end
+
+          schema_lookup = schemas.each_with_object({}) { |s, h| h[s.id] = s.full_name }
+          schema_ids = schemas.map(&:id)
           search = params[:search]
+          limit = params[:limit] || 100
+          offset = params[:offset] || 0
 
           records = SOT::QueryService.list(
-            schema,
+            schema_ids,
             filters: filters,
             search: search,
             state: params[:state],
-            limit: params[:limit] || 100,
-            offset: params[:offset] || 0
+            limit: limit,
+            offset: offset
           )
 
           if records.empty?
+            table_label = schemas.map(&:full_name).join(', ')
             return MCP::Tool::Response.new([{
               type: 'text',
-              text: "No records found for #{schema.full_name} with the given filters."
+              text: "No records found for #{table_label} with the given filters."
             }])
           end
 
+          multi_table = schemas.length > 1
           lines = records.map do |r|
             state_info = r.state ? " [#{r.state}]" : ''
-            "Record ##{r.id} (v#{r.current_version})#{state_info}: #{r.data}"
+            table_prefix = multi_table ? " in #{schema_lookup[r.schema_id]}" : ''
+            "Record ##{r.id} (v#{r.current_version})#{state_info}#{table_prefix}: #{r.data}"
           end
 
-          count = SOT::QueryService.count(schema, filters: filters, search: search, state: params[:state])
-          limit = params[:limit] || 100
-          offset = params[:offset] || 0
+          count = SOT::QueryService.count(schema_ids, filters: filters, search: search, state: params[:state])
           from = offset + 1
           to = offset + records.length
-          header = "Showing #{from}-#{to} of #{count} record(s) for #{schema.full_name}:"
+          table_label = schemas.map(&:full_name).join(', ')
+          header = "Showing #{from}-#{to} of #{count} record(s) for #{table_label}:"
 
           MCP::Tool::Response.new([{
             type: 'text',

@@ -6,9 +6,10 @@ module SOT
       has will would can could should may than then when who which how what where
     ].to_set.freeze
 
-    def self.list(schema, filters: {}, state: nil, search: [], limit: 100, offset: 0)
+    def self.list(schema_ids, filters: {}, state: nil, search: [], limit: 100, offset: 0)
+      schema_ids = Array(schema_ids)
       terms = normalize_search(search)
-      dataset = build_dataset(schema, filters: filters, state: state, search_terms: terms)
+      dataset = build_dataset(schema_ids, filters: filters, state: state, search_terms: terms)
 
       if terms.empty?
         dataset.order(:id).limit(limit).offset(offset).all
@@ -23,14 +24,15 @@ module SOT
       end
     end
 
-    def self.count(schema, filters: {}, state: nil, search: [])
+    def self.count(schema_ids, filters: {}, state: nil, search: [])
+      schema_ids = Array(schema_ids)
       terms = normalize_search(search)
-      dataset = build_dataset(schema, filters: filters, state: state, search_terms: terms)
+      dataset = build_dataset(schema_ids, filters: filters, state: state, search_terms: terms)
       dataset.count
     end
 
-    def self.find(schema, record_id)
-      Record.first(id: record_id, schema_id: schema.id)
+    def self.find(record_id)
+      Record[record_id]
     end
 
     # Normalize raw search input into individual terms.
@@ -45,8 +47,8 @@ module SOT
 
     private
 
-    def self.build_dataset(schema, filters: {}, state: nil, search_terms: [])
-      dataset = Record.where(schema_id: schema.id)
+    def self.build_dataset(schema_ids, filters: {}, state: nil, search_terms: [])
+      dataset = Record.where(schema_id: schema_ids)
 
       dataset = dataset.where(state: state) if state
 

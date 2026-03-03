@@ -77,6 +77,10 @@ module SOT
       end
     end
 
+    def self.resolve_many(entity_names)
+      entity_names.each_with_object({}) { |name, hash| hash[name] = resolve(name) }
+    end
+
     def self.list(namespace: nil)
       dataset = Schema.order(:namespace, :name)
       dataset = dataset.where(namespace: namespace) if namespace

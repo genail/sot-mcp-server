@@ -56,14 +56,14 @@ module SOT
       search = Array(search)
 
       records = SOT::QueryService.list(
-        schema,
+        [schema.id],
         filters: filters,
         search: search,
         state: params[:state],
         limit: (params[:limit] || 50).to_i,
         offset: (params[:offset] || 0).to_i
       )
-      count = SOT::QueryService.count(schema, filters: filters, search: search, state: params[:state])
+      count = SOT::QueryService.count([schema.id], filters: filters, search: search, state: params[:state])
 
       json(records: records.map { |r| serialize_record(r) }, total: count)
     rescue JSON::ParserError

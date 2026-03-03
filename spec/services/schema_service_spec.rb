@@ -164,6 +164,27 @@ RSpec.describe SOT::SchemaService do
     end
   end
 
+  describe '.resolve_many' do
+    it 'resolves multiple table names' do
+      schema1 = create(:table_schema, namespace: 'org', name: 'locks')
+      schema2 = create(:table_schema, namespace: 'org', name: 'docs')
+      result = described_class.resolve_many(['org.locks', 'org.docs'])
+      expect(result['org.locks']).to eq(schema1)
+      expect(result['org.docs']).to eq(schema2)
+    end
+
+    it 'returns nil for unresolved names' do
+      create(:table_schema, namespace: 'org', name: 'locks')
+      result = described_class.resolve_many(['org.locks', 'nonexistent'])
+      expect(result['org.locks']).to be_a(SOT::Schema)
+      expect(result['nonexistent']).to be_nil
+    end
+
+    it 'returns empty hash for empty input' do
+      expect(described_class.resolve_many([])).to eq({})
+    end
+  end
+
   describe '.list' do
     it 'returns all schemas' do
       create(:table_schema, namespace: 'org', name: 'a')
