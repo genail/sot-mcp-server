@@ -481,6 +481,233 @@ RSpec.describe SOT::MutationService do
       end
     end
 
+    context 'with edit_data' do
+      let(:text_schema) do
+        create(:table_schema, fields: JSON.generate([
+          { 'name' => 'title', 'type' => 'string', 'required' => true },
+          { 'name' => 'content', 'type' => 'text', 'required' => false },
+          { 'name' => 'count', 'type' => 'integer', 'required' => false }
+        ]))
+      end
+
+      let(:text_record) do
+        described_class.create(
+          schema: text_schema,
+          data: { 'title' => 'Doc', 'content' => 'The quick brown fox jumps over the lazy dog.' },
+          user: user
+        )
+      end
+
+      it 'replaces text within a field' do
+        result = described_class.update(
+          record: text_record,
+          edit_data: { 'content' => [{ 'search' => 'brown fox', 'replace' => 'red cat' }] },
+          expected_version: 1,
+          user: user
+        )
+        expect(result.parsed_data['content']).to eq('The quick red cat jumps over the lazy dog.')
+      end
+
+      it 'supports multiple non-overlapping edits on the same field' do
+        result = described_class.update(
+          record: text_record,
+          edit_data: { 'content' => [
+            { 'search' => 'quick', 'replace' => 'slow' },
+            { 'search' => 'lazy', 'replace' => 'energetic' }
+          ] },
+          expected_version: 1,
+          user: user
+        )
+        expect(result.parsed_data['content']).to eq('The slow brown fox jumps over the energetic dog.')
+      end
+
+      it 'supports deletion via empty replace string' do
+        result = described_class.update(
+          record: text_record,
+          edit_data: { 'content' => [{ 'search' => 'brown ', 'replace' => '' }] },
+          expected_version: 1,
+          user: user
+        )
+        expect(result.parsed_data['content']).to eq('The quick fox jumps over the lazy dog.')
+      end
+
+      it 'requires version' do
+        expect {
+          described_class.update(
+            record: text_record,
+            edit_data: { 'content' => [{ 'search' => 'fox', 'replace' => 'cat' }] },
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /version is required/)
+      end
+
+      it 'raises when search text is not found' do
+        expect {
+          described_class.update(
+            record: text_record,
+            edit_data: { 'content' => [{ 'search' => 'nonexistent text', 'replace' => 'x' }] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /search text not found/)
+      end
+
+      it 'raises when search text matches multiple locations' do
+        rec = described_class.create(
+          schema: text_schema,
+          data: { 'title' => 'Doc', 'content' => 'the cat and the dog' },
+          user: user
+        )
+        expect {
+          described_class.update(
+            record: rec,
+            edit_data: { 'content' => [{ 'search' => 'the', 'replace' => 'a' }] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /matches 2 locations/)
+      end
+
+      it 'raises when edit regions overlap' do
+        rec = described_class.create(
+          schema: text_schema,
+          data: { 'title' => 'Doc', 'content' => 'abcdef' },
+          user: user
+        )
+        expect {
+          described_class.update(
+            record: rec,
+            edit_data: { 'content' => [
+              { 'search' => 'bcde', 'replace' => 'X' },
+              { 'search' => 'cdef', 'replace' => 'Y' }
+            ] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /overlap/)
+      end
+
+      it 'raises for non-editable field types' do
+        expect {
+          described_class.update(
+            record: text_record,
+            edit_data: { 'count' => [{ 'search' => '1', 'replace' => '2' }] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /Cannot edit.*count.*integer/)
+      end
+
+      it 'raises for unknown fields' do
+        expect {
+          described_class.update(
+            record: text_record,
+            edit_data: { 'nonexistent' => [{ 'search' => 'x', 'replace' => 'y' }] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /Unknown field/)
+      end
+
+      it 'raises when same field appears in both data and edit_data' do
+        expect {
+          described_class.update(
+            record: text_record,
+            data: { 'content' => 'replaced' },
+            edit_data: { 'content' => [{ 'search' => 'fox', 'replace' => 'cat' }] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /both data and edit_data/)
+      end
+
+      it 'raises when same field appears in both append_data and edit_data' do
+        expect {
+          described_class.update(
+            record: text_record,
+            append_data: { 'content' => ' More text.' },
+            edit_data: { 'content' => [{ 'search' => 'fox', 'replace' => 'cat' }] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /both append_data and edit_data/)
+      end
+
+      it 'works alongside data on different fields' do
+        result = described_class.update(
+          record: text_record,
+          data: { 'title' => 'Updated Doc' },
+          edit_data: { 'content' => [{ 'search' => 'fox', 'replace' => 'cat' }] },
+          expected_version: 1,
+          user: user
+        )
+        expect(result.parsed_data['title']).to eq('Updated Doc')
+        expect(result.parsed_data['content']).to eq('The quick brown cat jumps over the lazy dog.')
+      end
+
+      it 'matches edits against original text, not post-edit text' do
+        rec = described_class.create(
+          schema: text_schema,
+          data: { 'title' => 'Doc', 'content' => 'aaa bbb ccc' },
+          user: user
+        )
+        result = described_class.update(
+          record: rec,
+          edit_data: { 'content' => [
+            { 'search' => 'aaa', 'replace' => 'XXX' },
+            { 'search' => 'ccc', 'replace' => 'ZZZ' }
+          ] },
+          expected_version: 1,
+          user: user
+        )
+        expect(result.parsed_data['content']).to eq('XXX bbb ZZZ')
+      end
+
+      it 'increments version' do
+        result = described_class.update(
+          record: text_record,
+          edit_data: { 'content' => [{ 'search' => 'fox', 'replace' => 'cat' }] },
+          expected_version: 1,
+          user: user
+        )
+        expect(result.current_version).to eq(2)
+      end
+
+      it 'records correct before/after in activity log' do
+        described_class.update(
+          record: text_record,
+          edit_data: { 'content' => [{ 'search' => 'brown fox', 'replace' => 'red cat' }] },
+          expected_version: 1,
+          user: user
+        )
+        logs = SOT::ActivityLog.where(record_id: text_record.id, action: 'update').all
+        changes = logs.last.parsed_changes
+        expect(changes['before']['data']['content']).to eq('The quick brown fox jumps over the lazy dog.')
+        expect(changes['after']['data']['content']).to eq('The quick red cat jumps over the lazy dog.')
+      end
+
+      it 'handles symbol keys from MCP gem' do
+        result = described_class.update(
+          record: text_record,
+          edit_data: { content: [{ search: 'fox', replace: 'cat' }] },
+          expected_version: 1,
+          user: user
+        )
+        expect(result.parsed_data['content']).to eq('The quick brown cat jumps over the lazy dog.')
+      end
+
+      it 'raises when search is empty string' do
+        expect {
+          described_class.update(
+            record: text_record,
+            edit_data: { 'content' => [{ 'search' => '', 'replace' => 'x' }] },
+            expected_version: 1,
+            user: user
+          )
+        }.to raise_error(SOT::MutationService::ValidationError, /non-empty string/)
+      end
+    end
+
     it 'creates an activity log entry with before/after diff' do
       described_class.update(
         record: record,

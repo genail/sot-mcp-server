@@ -135,6 +135,61 @@ RSpec.describe SOT::Tools::User::Mutate, type: :tool do
       expect(refreshed.parsed_data['log']).to eq("Entry 1\nEntry 2")
     end
 
+    context 'with edit_data' do
+      let(:text_schema) do
+        create(:table_schema, namespace: 'org', name: 'docs',
+               fields: JSON.generate([
+                 { 'name' => 'title', 'type' => 'string', 'required' => true },
+                 { 'name' => 'body', 'type' => 'text', 'required' => false }
+               ]))
+      end
+
+      let(:doc_record) do
+        SOT::MutationService.create(schema: text_schema,
+                                    data: { 'title' => 'Guide', 'body' => 'Hello world. This is a guide.' },
+                                    user: user)
+      end
+
+      it 'applies search/replace edit' do
+        response = call_tool(described_class, user: user,
+                             action: 'update', record_id: doc_record.id,
+                             edit_data: { 'body' => [{ 'search' => 'Hello world', 'replace' => 'Hi there' }] },
+                             version: 1)
+        expect(response_error?(response)).to be false
+        refreshed = SOT::Record[doc_record.id]
+        expect(refreshed.parsed_data['body']).to eq('Hi there. This is a guide.')
+      end
+
+      it 'returns error when search text not found' do
+        response = call_tool(described_class, user: user,
+                             action: 'update', record_id: doc_record.id,
+                             edit_data: { 'body' => [{ 'search' => 'nonexistent', 'replace' => 'x' }] },
+                             version: 1)
+        expect(response_error?(response)).to be true
+        expect(response_text(response)).to include('search text not found')
+      end
+
+      it 'returns error when search text is ambiguous' do
+        rec = SOT::MutationService.create(schema: text_schema,
+                                          data: { 'title' => 'Doc', 'body' => 'foo bar foo' },
+                                          user: user)
+        response = call_tool(described_class, user: user,
+                             action: 'update', record_id: rec.id,
+                             edit_data: { 'body' => [{ 'search' => 'foo', 'replace' => 'baz' }] },
+                             version: 1)
+        expect(response_error?(response)).to be true
+        expect(response_text(response)).to include('matches 2 locations')
+      end
+
+      it 'requires version' do
+        response = call_tool(described_class, user: user,
+                             action: 'update', record_id: doc_record.id,
+                             edit_data: { 'body' => [{ 'search' => 'Hello', 'replace' => 'Hi' }] })
+        expect(response_error?(response)).to be true
+        expect(response_text(response)).to include('version is required')
+      end
+    end
+
     it 'returns error when append_data targets non-text field' do
       response = call_tool(described_class, user: user,
                            action: 'update', record_id: record.id,

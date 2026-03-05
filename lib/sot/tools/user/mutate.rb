@@ -13,7 +13,8 @@ module SOT
             Data is MERGED into the existing record — only the fields you provide are changed.
             To remove a field, set it to null. To fully replace all data, set replace_data to true.
             To append text to an existing field value, use append_data instead of data.
-            Only string and text fields support append. A field cannot appear in both data and append_data.
+            To surgically edit parts of a text field, use edit_data with search/replace pairs.
+            Only string and text fields support append and edit. A field cannot appear in multiple of data/append_data/edit_data.
           - delete: Delete a record. Requires record_id and version.
 
           Version (required for update/delete):
@@ -66,6 +67,21 @@ module SOT
               type: 'object',
               description: 'Key-value pairs to append to existing field values (string/text fields only)',
               additionalProperties: { type: 'string' }
+            },
+            edit_data: {
+              type: 'object',
+              description: 'Search-and-replace edits within text field values (string/text fields only). Each key is a field name, value is an array of {search, replace} pairs. Search text must match exactly once. Multiple edits per field are matched against the original text and must not overlap.',
+              additionalProperties: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    search: { type: 'string', description: 'Exact text to find (must match exactly once in the field)' },
+                    replace: { type: 'string', description: 'Replacement text (use empty string to delete)' }
+                  },
+                  required: %w[search replace]
+                }
+              }
             },
             version: {
               type: 'integer',
@@ -128,6 +144,7 @@ module SOT
             user: user,
             replace_data: params[:replace_data] || false,
             append_data: params[:append_data],
+            edit_data: params[:edit_data],
             expected_version: params[:version]
           )
 

@@ -57,7 +57,7 @@ module SOT
       record
     end
 
-    def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false, append_data: nil, expected_version: nil)
+    def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false, append_data: nil, edit_data: nil, expected_version: nil)
       schema = record.schema
 
       raise ValidationError, "Cannot set state on a stateless table" if state && !schema.stateful?
@@ -65,19 +65,16 @@ module SOT
       raise ValidationError, "append_data must be a Hash" if append_data && !append_data.is_a?(Hash)
       data = data.transform_keys(&:to_s) if data
       append_data = append_data.transform_keys(&:to_s) if append_data
+      edit_data = normalize_edit_data(edit_data) if edit_data
       validate_append_data!(schema, append_data) if append_data
+      validate_edit_data!(schema, edit_data) if edit_data
       data = coerce_data!(schema, data) if data
       validate_state!(schema, state) if state
 
-      if data && append_data
-        overlap = data.keys.map(&:to_s) & append_data.keys.map(&:to_s)
-        unless overlap.empty?
-          raise ValidationError, "Fields cannot appear in both data and append_data: #{overlap.join(', ')}"
-        end
-      end
+      check_field_overlaps!(data, append_data, edit_data)
 
       # Determine if this is an append-only operation (no version check required)
-      append_only = append_data && !data && !state && !replace_data
+      append_only = append_data && !data && !state && !replace_data && !edit_data
 
       unless append_only
         raise ValidationError, "version is required for update (omit only for append-only operations)" if expected_version.nil?
@@ -122,6 +119,14 @@ module SOT
           append_data.each do |field, value|
             existing = resolved_data[field.to_s]
             resolved_data[field.to_s] = existing ? "#{existing}#{value}" : value.to_s
+          end
+        end
+
+        if edit_data
+          resolved_data = (resolved_data || before_data).dup
+          edit_data.each do |field, edits|
+            original_value = (before_data[field.to_s] || '').to_s
+            resolved_data[field.to_s] = apply_field_edits(original_value, edits, field)
           end
         end
 
@@ -235,6 +240,94 @@ module SOT
       end
 
       APPENDABLE_TYPES = %w[string text].freeze
+      EDITABLE_TYPES = %w[string text].freeze
+
+      def check_field_overlaps!(data, append_data, edit_data)
+        if data && append_data
+          overlap = data.keys.map(&:to_s) & append_data.keys.map(&:to_s)
+          raise ValidationError, "Fields cannot appear in both data and append_data: #{overlap.join(', ')}" unless overlap.empty?
+        end
+        if data && edit_data
+          overlap = data.keys.map(&:to_s) & edit_data.keys.map(&:to_s)
+          raise ValidationError, "Fields cannot appear in both data and edit_data: #{overlap.join(', ')}" unless overlap.empty?
+        end
+        if append_data && edit_data
+          overlap = append_data.keys.map(&:to_s) & edit_data.keys.map(&:to_s)
+          raise ValidationError, "Fields cannot appear in both append_data and edit_data: #{overlap.join(', ')}" unless overlap.empty?
+        end
+      end
+
+      def normalize_edit_data(edit_data)
+        raise ValidationError, "edit_data must be a Hash" unless edit_data.is_a?(Hash)
+
+        edit_data.transform_keys(&:to_s).transform_values do |edits|
+          raise ValidationError, "edit_data values must be arrays of {search, replace} objects" unless edits.is_a?(Array)
+
+          edits.map do |edit|
+            raise ValidationError, "Each edit must be a Hash with 'search' and 'replace' keys" unless edit.is_a?(Hash)
+            edit.transform_keys(&:to_s)
+          end
+        end
+      end
+
+      def validate_edit_data!(schema, edit_data)
+        fields_by_name = schema.parsed_fields.each_with_object({}) { |f, h| h[f['name']] = f }
+
+        edit_data.each do |field_name, edits|
+          field_def = fields_by_name[field_name]
+          raise ValidationError, "Unknown field in edit_data: #{field_name}" unless field_def
+          unless EDITABLE_TYPES.include?(field_def['type'])
+            raise ValidationError, "Cannot edit field '#{field_name}' of type '#{field_def['type']}'. Only #{EDITABLE_TYPES.join(', ')} fields support edit."
+          end
+
+          edits.each do |edit|
+            raise ValidationError, "Each edit must have 'search' and 'replace' keys" unless edit.key?('search') && edit.key?('replace')
+            raise ValidationError, "Edit 'search' must be a non-empty string" unless edit['search'].is_a?(String) && !edit['search'].empty?
+            raise ValidationError, "Edit 'replace' must be a string" unless edit['replace'].is_a?(String)
+          end
+        end
+      end
+
+      def apply_field_edits(original, edits, field_name)
+        regions = []
+
+        edits.each do |edit|
+          search = edit['search']
+          replace = edit['replace']
+
+          positions = []
+          start = 0
+          while (idx = original.index(search, start))
+            positions << idx
+            start = idx + 1
+          end
+
+          if positions.empty?
+            raise ValidationError, "Edit failed for field '#{field_name}': search text not found"
+          end
+
+          if positions.length > 1
+            raise ValidationError, "Edit failed for field '#{field_name}': search text matches #{positions.length} locations (must be unique). Provide more surrounding context to disambiguate."
+          end
+
+          regions << { start: positions[0], length: search.length, replace: replace }
+        end
+
+        regions.sort_by! { |r| r[:start] }
+
+        regions.each_cons(2) do |a, b|
+          if b[:start] < a[:start] + a[:length]
+            raise ValidationError, "Edit failed for field '#{field_name}': edit regions overlap"
+          end
+        end
+
+        result = original.dup
+        regions.reverse_each do |region|
+          result[region[:start], region[:length]] = region[:replace]
+        end
+
+        result
+      end
 
       def validate_append_data!(schema, append_data)
         raise ValidationError, "append_data must be a Hash" unless append_data.is_a?(Hash)
