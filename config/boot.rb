@@ -7,6 +7,7 @@ require 'sequel/extensions/migration'
 Sequel::Migrator.run(DB, File.expand_path('../db/migrations', __dir__))
 
 # Models
+require_relative '../lib/sot/models/role'
 require_relative '../lib/sot/models/user'
 require_relative '../lib/sot/models/schema'
 require_relative '../lib/sot/models/record'
@@ -19,6 +20,7 @@ require_relative '../lib/sot/services/type_coercion'
 require_relative '../lib/sot/services/schema_service'
 require_relative '../lib/sot/services/query_service'
 require_relative '../lib/sot/services/mutation_service'
+require_relative '../lib/sot/services/permission_service'
 require_relative '../lib/sot/services/user_service'
 
 # MCP Tools
@@ -31,6 +33,7 @@ require_relative '../lib/sot/tools/user/feedback'
 require_relative '../lib/sot/tools/user/list_users'
 require_relative '../lib/sot/tools/user/whoami'
 require_relative '../lib/sot/tools/admin/manage_schema'
+require_relative '../lib/sot/tools/admin/manage_roles'
 require_relative '../lib/sot/tools/admin/manage_users'
 require_relative '../lib/sot/tools/admin/view_feedback'
 

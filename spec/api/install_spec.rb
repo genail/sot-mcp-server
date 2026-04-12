@@ -30,7 +30,7 @@ RSpec.describe 'POST /install', type: :api do
       expect(SOT::User.count).to eq(1)
       user = SOT::User.first
       expect(user.name).to eq('admin')
-      expect(user.is_admin).to be true
+      expect(user.admin?).to be true
     end
   end
 

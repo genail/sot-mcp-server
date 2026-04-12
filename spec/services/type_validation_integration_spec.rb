@@ -274,7 +274,7 @@ RSpec.describe 'Type validation integration' do
   end
 
   describe 'UserService.rename cascade' do
-    let(:admin) { create(:user, is_admin: true) }
+    let(:admin) { create(:user, :admin) }
     let!(:alice) { create(:user, name: 'Alice') }
 
     let(:schema_with_user_field) do

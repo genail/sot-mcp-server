@@ -16,7 +16,7 @@ module SOT
       end
 
       def require_admin!
-        unless current_user&.is_admin
+        unless current_user&.admin?
           halt 403, json(error: 'Admin access required.')
         end
       end
@@ -34,7 +34,8 @@ module SOT
     # --- Schema endpoints ---
 
     get '/schemas' do
-      schemas = SOT::SchemaService.list(namespace: params[:namespace])
+      all_schemas = SOT::SchemaService.list(namespace: params[:namespace])
+      schemas = all_schemas.select { |s| SOT::PermissionService.can?(current_user, s, :read) }
       json(schemas: schemas.map { |s| serialize_schema(s) })
     end
 
@@ -43,6 +44,7 @@ module SOT
     get '/records/:table' do
       schema = SOT::SchemaService.resolve(params[:table])
       halt 404, json(error: "Table '#{params[:table]}' not found.") unless schema
+      halt 404, json(error: "Table '#{params[:table]}' not found.") unless SOT::PermissionService.can?(current_user, schema, :read)
 
       filters = params[:filters] ? JSON.parse(params[:filters]) : {}
       halt 400, json(error: 'Filters must be a JSON object.') unless filters.is_a?(Hash)
@@ -86,6 +88,8 @@ module SOT
       )
 
       [201, json(record: serialize_record(record))]
+    rescue SOT::PermissionService::PermissionDenied
+      halt 404, json(error: "Table '#{data['table']}' not found.")
     rescue SOT::MutationService::ValidationError => e
       halt 422, json(error: e.message)
     end
@@ -107,6 +111,8 @@ module SOT
       )
 
       json(record: serialize_record(updated))
+    rescue SOT::PermissionService::PermissionDenied
+      halt 404, json(error: "Record ##{params[:id]} not found.")
     rescue SOT::MutationService::VersionConflict => e
       halt 409, json(error: e.message)
     rescue SOT::MutationService::PreconditionFailed => e
@@ -128,6 +134,8 @@ module SOT
       )
 
       json(message: "Deleted record ##{params[:id]}.")
+    rescue SOT::PermissionService::PermissionDenied
+      halt 404, json(error: "Record ##{params[:id]} not found.")
     rescue SOT::MutationService::VersionConflict => e
       halt 409, json(error: e.message)
     rescue SOT::MutationService::PreconditionFailed => e
@@ -148,9 +156,12 @@ module SOT
     get '/activity_log' do
       dataset = SOT::ActivityLog.order(Sequel.desc(:created_at))
 
+      readable_ids = SOT::PermissionService.readable_schema_ids(current_user)
+      dataset = dataset.where(schema_id: readable_ids)
+
       if params[:table]
         schema = SOT::SchemaService.resolve(params[:table])
-        halt 404, json(error: "Table '#{params[:table]}' not found.") unless schema
+        halt 404, json(error: "Table '#{params[:table]}' not found.") unless schema && SOT::PermissionService.can?(current_user, schema, :read)
         dataset = dataset.where(schema_id: schema.id)
       end
 
@@ -169,12 +180,18 @@ module SOT
       require_admin!
       data = parse_json_body
 
+      acl = {}
+      %w[read_roles create_roles update_roles delete_roles].each do |key|
+        acl[key.to_sym] = data[key] if data.key?(key)
+      end
+
       schema = SOT::SchemaService.create(
         namespace: data['namespace'],
         name: data['name'],
         description: data['description'],
         fields: data['fields'] || [],
-        states: data['states']
+        states: data['states'],
+        **acl
       )
 
       [201, json(schema: serialize_schema(schema))]
@@ -192,6 +209,9 @@ module SOT
       update_attrs[:description] = data['description'] if data.key?('description')
       update_attrs[:fields] = data['fields'] if data.key?('fields')
       update_attrs[:states] = data['states'] if data.key?('states')
+      %w[read_roles create_roles update_roles delete_roles].each do |key|
+        update_attrs[key.to_sym] = data[key] if data.key?(key)
+      end
 
       updated = SOT::SchemaService.update(schema, **update_attrs)
 

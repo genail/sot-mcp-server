@@ -36,11 +36,14 @@ module SOT
         )
 
         def self.call(server_context:, **params)
+          user = server_context[:user]
+
           if params[:tables] && !params[:tables].empty?
-            return describe_selected(params[:tables])
+            return describe_selected(params[:tables], user)
           end
 
-          schemas = SOT::SchemaService.list(namespace: params[:namespace])
+          all_schemas = SOT::SchemaService.list(namespace: params[:namespace])
+          schemas = all_schemas.select { |s| SOT::PermissionService.can?(user, s, :read) }
 
           if schemas.empty?
             return MCP::Tool::Response.new([{
@@ -60,13 +63,13 @@ module SOT
 
         private
 
-        def self.describe_selected(table_names)
+        def self.describe_selected(table_names, user)
           lines = []
           not_found = []
 
           table_names.each do |name|
             schema = SOT::SchemaService.resolve(name)
-            if schema
+            if schema && SOT::PermissionService.can?(user, schema, :read)
               lines << format_detailed(schema)
             else
               not_found << name

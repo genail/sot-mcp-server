@@ -51,6 +51,48 @@ RSpec.describe SOT::Tools::Admin::ManageSchema, type: :tool do
     end
   end
 
+  describe 'create action with ACL params' do
+    it 'creates a schema with ACL roles' do
+      response = call_tool(described_class, user: admin,
+                           action: 'create', namespace: 'org', name: 'shared',
+                           fields: fields,
+                           read_roles: %w[member], create_roles: %w[member],
+                           update_roles: [], delete_roles: [])
+      expect(response_error?(response)).to be_falsey
+      schema = SOT::Schema.first(namespace: 'org', name: 'shared')
+      expect(schema.parsed_read_roles).to eq(%w[member])
+      expect(schema.parsed_create_roles).to eq(%w[member])
+      expect(schema.parsed_update_roles).to eq([])
+      expect(schema.parsed_delete_roles).to eq([])
+    end
+
+    it 'rejects unknown role names in ACL' do
+      response = call_tool(described_class, user: admin,
+                           action: 'create', namespace: 'org', name: 'bad_acl',
+                           fields: fields,
+                           read_roles: %w[nonexistent])
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('Unknown role')
+    end
+  end
+
+  describe 'update action with ACL params' do
+    before do
+      call_tool(described_class, user: admin,
+                action: 'create', namespace: 'org', name: 'locks',
+                fields: fields)
+    end
+
+    it 'updates ACL columns' do
+      response = call_tool(described_class, user: admin,
+                           action: 'update', table: 'org.locks',
+                           read_roles: %w[member])
+      expect(response_error?(response)).to be_falsey
+      schema = SOT::Schema.first(namespace: 'org', name: 'locks')
+      expect(schema.parsed_read_roles).to eq(%w[member])
+    end
+  end
+
   describe 'delete action' do
     before do
       call_tool(described_class, user: admin,
@@ -67,11 +109,10 @@ RSpec.describe SOT::Tools::Admin::ManageSchema, type: :tool do
 
     it 'returns error when schema has activity log entries' do
       schema = SOT::Schema.first(namespace: 'org', name: 'locks')
-      user_pair = SOT::User.create_with_token(name: 'worker')
       SOT::MutationService.create(
         schema: schema,
         data: { 'title' => 'item' },
-        user: user_pair.first
+        user: admin
       )
       # Activity log now references this schema. Records cascade-delete, but activity_log FK blocks.
       # First delete all records so only activity_log FK remains

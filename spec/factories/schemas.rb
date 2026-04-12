@@ -10,6 +10,10 @@ FactoryBot.define do
       ])
     end
     states { nil }
+    read_roles { JSON.generate(%w[admin member]) }
+    create_roles { JSON.generate(%w[admin member]) }
+    update_roles { JSON.generate(%w[admin member]) }
+    delete_roles { JSON.generate(%w[admin member]) }
 
     trait :stateful do
       states do
@@ -19,6 +23,20 @@ FactoryBot.define do
           { 'name' => 'archived', 'description' => 'Archived and read-only' }
         ])
       end
+    end
+
+    trait :admin_only do
+      read_roles { '[]' }
+      create_roles { '[]' }
+      update_roles { '[]' }
+      delete_roles { '[]' }
+    end
+
+    trait :read_only_member do
+      read_roles { JSON.generate(%w[admin member]) }
+      create_roles { '[]' }
+      update_roles { '[]' }
+      delete_roles { '[]' }
     end
   end
 end

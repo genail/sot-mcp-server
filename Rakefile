@@ -19,7 +19,7 @@ namespace :db do
   desc 'Seed admin user'
   task :seed do
     require_relative 'config/boot'
-    user, token = SOT::User.create_with_token(name: 'admin', is_admin: true)
+    user, token = SOT::User.create_with_token(name: 'admin', role_name: 'admin')
     puts "Admin user created: #{user.name}"
     puts "Token (save this, it won't be shown again): #{token}"
   end

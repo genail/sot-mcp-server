@@ -15,6 +15,7 @@ DB.run('PRAGMA foreign_keys=ON')
 Sequel::Migrator.run(DB, File.expand_path('../db/migrations', __dir__))
 
 # Load models
+require_relative '../lib/sot/models/role'
 require_relative '../lib/sot/models/user'
 require_relative '../lib/sot/models/schema'
 require_relative '../lib/sot/models/record'
@@ -27,6 +28,7 @@ require_relative '../lib/sot/services/type_coercion'
 require_relative '../lib/sot/services/schema_service'
 require_relative '../lib/sot/services/query_service'
 require_relative '../lib/sot/services/mutation_service'
+require_relative '../lib/sot/services/permission_service'
 require_relative '../lib/sot/services/user_service'
 
 # Load MCP tools (conditionally)
@@ -62,6 +64,9 @@ RSpec.configure do |config|
 
   config.before(:each) do
     DatabaseCleaner[:sequel].start
+    # Ensure system roles exist after truncation
+    SOT::Role.find_or_create(name: 'admin') { |r| r.description = 'Admin role' }
+    SOT::Role.find_or_create(name: 'member') { |r| r.description = 'Default role' }
   end
 
   config.after(:each) do

@@ -2,8 +2,8 @@ module SOT
   class UserService
     RENAME_BATCH_SIZE = 100
 
-    def self.create(name:, is_admin: false)
-      User.create_with_token(name: name, is_admin: is_admin)
+    def self.create(name:, role_name: 'member')
+      User.create_with_token(name: name, role_name: role_name)
     end
 
     def self.update(user, **attrs)

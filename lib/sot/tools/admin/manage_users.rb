@@ -9,23 +9,24 @@ module SOT
 
           Actions:
           - create: Create a new user. Returns the token (shown once, save it).
-          - list: List all users (shows active/inactive status).
+          - list: List all users (shows role and active/inactive status).
           - deactivate: Deactivate a user by name. They will no longer be able to authenticate.
           - activate: Reactivate a previously deactivated user.
           - regenerate_token: Generate a new token for a user. Returns the new token.
           - rename: Rename a user. Automatically updates all user-type fields referencing the old name across all records.
+          - set_role: Change a user's role. Requires name and role.
         DESC
 
         input_schema(
           properties: {
             action: {
               type: 'string',
-              enum: %w[create list deactivate activate regenerate_token rename],
+              enum: %w[create list deactivate activate regenerate_token rename set_role],
               description: 'The management action'
             },
-            name: { type: 'string', description: 'User name (required for create/deactivate/activate/regenerate_token/rename)' },
+            name: { type: 'string', description: 'User name (required for create/deactivate/activate/regenerate_token/rename/set_role)' },
             new_name: { type: 'string', description: 'New name for the user (required for rename)' },
-            is_admin: { type: 'boolean', description: 'Whether the user is an admin (for create, default false)' }
+            role: { type: 'string', description: 'Role name (for create, default "member"; required for set_role)' }
           },
           required: ['action']
         )
@@ -38,6 +39,7 @@ module SOT
           when 'activate' then handle_activate(params)
           when 'regenerate_token' then handle_regenerate(params)
           when 'rename' then handle_rename(params, server_context)
+          when 'set_role' then handle_set_role(params)
           else
             MCP::Tool::Response.new([{ type: 'text', text: "Unknown action '#{params[:action]}'." }], error: true)
           end
@@ -48,15 +50,18 @@ module SOT
         def self.handle_create(params)
           return MCP::Tool::Response.new([{ type: 'text', text: "'name' is required." }], error: true) unless params[:name]
 
+          role_name = params[:role] || 'member'
           user, token = SOT::UserService.create(
             name: params[:name],
-            is_admin: params[:is_admin] || false
+            role_name: role_name
           )
 
           MCP::Tool::Response.new([{
             type: 'text',
-            text: "Created user '#{user.name}' (admin: #{user.is_admin}).\nToken (save this, it won't be shown again): #{token}"
+            text: "Created user '#{user.name}' (role: #{user.role.name}).\nToken (save this, it won't be shown again): #{token}"
           }])
+        rescue ArgumentError => e
+          MCP::Tool::Response.new([{ type: 'text', text: "Error: #{e.message}" }], error: true)
         rescue Sequel::ValidationFailed => e
           MCP::Tool::Response.new([{ type: 'text', text: "Error: #{e.message}" }], error: true)
         end
@@ -69,7 +74,8 @@ module SOT
 
           lines = users.map do |u|
             status = u.is_active ? 'active' : 'inactive'
-            "- #{u.name} (admin: #{u.is_admin}, status: #{status})"
+            role_name = u.role&.name || 'unknown'
+            "- #{u.name} (role: #{role_name}, status: #{status})"
           end
           MCP::Tool::Response.new([{ type: 'text', text: "Users:\n#{lines.join("\n")}" }])
         end
@@ -112,6 +118,34 @@ module SOT
           MCP::Tool::Response.new([{
             type: 'text',
             text: "Regenerated token for '#{user.name}'.\nNew token (save this, it won't be shown again): #{token}"
+          }])
+        end
+
+        def self.handle_set_role(params)
+          return MCP::Tool::Response.new([{ type: 'text', text: "'name' is required." }], error: true) unless params[:name]
+          return MCP::Tool::Response.new([{ type: 'text', text: "'role' is required." }], error: true) unless params[:role]
+
+          user = SOT::UserService.find_by_name(params[:name])
+          return MCP::Tool::Response.new([{ type: 'text', text: "User '#{params[:name]}' not found." }], error: true) unless user
+
+          role = SOT::Role.first(name: params[:role])
+          return MCP::Tool::Response.new([{ type: 'text', text: "Role '#{params[:role]}' not found." }], error: true) unless role
+
+          if user.admin? && role.name != 'admin'
+            admin_role = SOT::Role.first(name: 'admin')
+            admin_count = SOT::User.where(role_id: admin_role.id, is_active: true).count
+            if admin_count <= 1
+              return MCP::Tool::Response.new([{
+                type: 'text',
+                text: "Cannot change role: '#{user.name}' is the last active admin."
+              }], error: true)
+            end
+          end
+
+          user.update(role_id: role.id, is_admin: role.name == 'admin')
+          MCP::Tool::Response.new([{
+            type: 'text',
+            text: "Set role of user '#{user.name}' to '#{role.name}'."
           }])
         end
 

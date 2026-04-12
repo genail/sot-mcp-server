@@ -16,8 +16,8 @@ RSpec.describe SOT::Tools::Admin::ManageUsers, type: :tool do
 
     it 'can create admin users' do
       call_tool(described_class, user: admin,
-                action: 'create', name: 'new_admin', is_admin: true)
-      expect(SOT::User.first(name: 'new_admin').is_admin).to be true
+                action: 'create', name: 'new_admin', role: 'admin')
+      expect(SOT::User.first(name: 'new_admin').admin?).to be true
     end
 
     it 'returns error without name' do
@@ -165,6 +165,82 @@ RSpec.describe SOT::Tools::Admin::ManageUsers, type: :tool do
     it 'returns error for unknown user' do
       response = call_tool(described_class, user: admin,
                            action: 'rename', name: 'nonexistent', new_name: 'new')
+      expect(response_error?(response)).to be true
+    end
+  end
+
+  describe 'set_role action' do
+    it 'changes a user role' do
+      user = create(:user, name: 'alice')
+      SOT::Role.create(name: 'support')
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', name: 'alice', role: 'support')
+      expect(response_error?(response)).to be_falsey
+      expect(response_text(response)).to include("Set role of user 'alice' to 'support'")
+      expect(user.reload.role.name).to eq('support')
+    end
+
+    it 'blocks demoting the last active admin' do
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', name: admin.name, role: 'member')
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('last active admin')
+    end
+
+    it 'allows demotion when multiple admins exist' do
+      other_admin = create(:user, :admin, name: 'other_admin')
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', name: other_admin.name, role: 'member')
+      expect(response_error?(response)).to be_falsey
+      expect(other_admin.reload.role.name).to eq('member')
+    end
+
+    it 'does not count inactive admins toward admin count' do
+      create(:user, :admin, :inactive, name: 'inactive_admin')
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', name: admin.name, role: 'member')
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('last active admin')
+    end
+
+    it 'returns error for unknown user' do
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', name: 'nonexistent', role: 'member')
+      expect(response_error?(response)).to be true
+    end
+
+    it 'returns error for unknown role' do
+      create(:user, name: 'alice')
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', name: 'alice', role: 'nonexistent')
+      expect(response_error?(response)).to be true
+    end
+
+    it 'returns error without name' do
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', role: 'member')
+      expect(response_error?(response)).to be true
+    end
+
+    it 'returns error without role' do
+      create(:user, name: 'alice')
+      response = call_tool(described_class, user: admin,
+                           action: 'set_role', name: 'alice')
+      expect(response_error?(response)).to be true
+    end
+  end
+
+  describe 'create action with roles' do
+    it 'defaults to member role when no role specified' do
+      response = call_tool(described_class, user: admin,
+                           action: 'create', name: 'default_user')
+      expect(response_error?(response)).to be_falsey
+      expect(SOT::User.first(name: 'default_user').role.name).to eq('member')
+    end
+
+    it 'returns error for invalid role name' do
+      response = call_tool(described_class, user: admin,
+                           action: 'create', name: 'alice', role: 'nonexistent')
       expect(response_error?(response)).to be true
     end
   end

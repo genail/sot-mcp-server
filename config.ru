@@ -11,6 +11,7 @@ USER_TOOLS = [
 ].freeze
 
 ADMIN_TOOLS = [
+  SOT::Tools::Admin::ManageRoles,
   SOT::Tools::Admin::ManageSchema,
   SOT::Tools::Admin::ManageUsers,
   SOT::Tools::Admin::ViewFeedback,

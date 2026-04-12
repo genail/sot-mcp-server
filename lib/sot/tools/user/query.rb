@@ -50,11 +50,20 @@ module SOT
         )
 
         def self.call(server_context:, **params)
+          user = server_context[:user]
           table_names = Array(params[:table]).uniq
 
           # Resolve all tables
           resolved = SOT::SchemaService.resolve_many(table_names)
           not_found = resolved.select { |_, v| v.nil? }.keys
+          # Also treat inaccessible tables as "not found"
+          resolved.each do |name, schema|
+            next unless schema
+            unless SOT::PermissionService.can?(user, schema, :read)
+              not_found << name
+              resolved[name] = nil
+            end
+          end
           unless not_found.empty?
             return error_response(
               "Table(s) not found: #{not_found.join(', ')}.",
@@ -67,6 +76,9 @@ module SOT
           if params[:record_id]
             record = SOT::QueryService.find(params[:record_id])
             unless record
+              return error_response("Record ##{params[:record_id]} not found.")
+            end
+            unless SOT::PermissionService.can?(user, record.schema, :read)
               return error_response("Record ##{params[:record_id]} not found.")
             end
             table_name = record.schema.full_name

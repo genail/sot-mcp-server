@@ -14,7 +14,7 @@ module SOT
         halt 403, json(error: 'System already installed.')
       end
 
-      user, token = SOT::User.create_with_token(name: 'admin', is_admin: true)
+      user, token = SOT::User.create_with_token(name: 'admin', role_name: 'admin')
 
       [201, json(
         message: 'Admin user created. Save this token — it will not be shown again.',

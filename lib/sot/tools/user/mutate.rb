@@ -124,6 +124,9 @@ module SOT
             type: 'text',
             text: "Created record ##{record.id} (v#{record.current_version})#{state_info} in #{schema.full_name}:\n#{record.data}"
           }])
+        rescue SOT::PermissionService::PermissionDenied
+          error_response("Table '#{params[:table]}' not found.",
+                          hint: 'Use sot_describe_tables to see available tables.')
         rescue SOT::MutationService::ValidationError => e
           schema = SOT::SchemaService.resolve(params[:table])
           error_response(e.message, schema: schema)
@@ -157,6 +160,8 @@ module SOT
           error_response(e.message, schema: e.record.schema, record: e.record)
         rescue SOT::MutationService::PreconditionFailed => e
           error_response(e.message, schema: e.record.schema, record: e.record)
+        rescue SOT::PermissionService::PermissionDenied
+          error_response("Record ##{params[:record_id]} not found.")
         rescue SOT::MutationService::ValidationError => e
           record = SOT::Record[params[:record_id]]
           error_response(e.message, schema: record&.schema)
@@ -184,6 +189,8 @@ module SOT
           error_response(e.message, schema: e.record.schema, record: e.record)
         rescue SOT::MutationService::PreconditionFailed => e
           error_response(e.message, schema: e.record.schema, record: e.record)
+        rescue SOT::PermissionService::PermissionDenied
+          error_response("Record ##{params[:record_id]} not found.")
         rescue SOT::MutationService::ValidationError => e
           record = SOT::Record[params[:record_id]]
           error_response(e.message, schema: record&.schema)

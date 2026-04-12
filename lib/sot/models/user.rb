@@ -6,13 +6,18 @@ module SOT
     plugin :timestamps, update_on_create: true
     plugin :validation_helpers
 
+    many_to_one :role, class: 'SOT::Role'
     one_to_many :activity_logs, class: 'SOT::ActivityLog'
     one_to_many :feedbacks, class: 'SOT::Feedback'
 
     def validate
       super
-      validates_presence [:name, :token_hash]
+      validates_presence [:name, :token_hash, :role_id]
       validates_unique :name
+    end
+
+    def admin?
+      role&.name == 'admin'
     end
 
     def self.authenticate(token)
@@ -24,12 +29,16 @@ module SOT
       user
     end
 
-    def self.create_with_token(name:, is_admin: false)
+    def self.create_with_token(name:, role_name: 'member')
+      role = SOT::Role.first(name: role_name)
+      raise ArgumentError, "Role '#{role_name}' not found" unless role
+
       token = SecureRandom.hex(32)
       user = create(
         name: name,
         token_hash: BCrypt::Password.create(token),
-        is_admin: is_admin
+        is_admin: role_name == 'admin',
+        role_id: role.id
       )
       [user, token]
     end

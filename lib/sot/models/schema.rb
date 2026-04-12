@@ -51,5 +51,31 @@ module SOT
 
       parsed_states.first&.dig('name')
     end
+
+    def parsed_read_roles
+      read_roles ? JSON.parse(read_roles) : []
+    end
+
+    def parsed_create_roles
+      create_roles ? JSON.parse(create_roles) : []
+    end
+
+    def parsed_update_roles
+      update_roles ? JSON.parse(update_roles) : []
+    end
+
+    def parsed_delete_roles
+      delete_roles ? JSON.parse(delete_roles) : []
+    end
+
+    def roles_for_action(action)
+      case action.to_sym
+      when :read then parsed_read_roles
+      when :create then parsed_create_roles
+      when :update then parsed_update_roles
+      when :delete then parsed_delete_roles
+      else []
+      end
+    end
   end
 end

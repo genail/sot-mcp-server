@@ -117,6 +117,73 @@ RSpec.describe SOT::Schema do
     end
   end
 
+  describe '#parsed_read_roles' do
+    it 'parses the JSON array' do
+      schema = create(:table_schema, read_roles: JSON.generate(%w[admin member]))
+      expect(schema.parsed_read_roles).to eq(%w[admin member])
+    end
+
+    it 'returns empty array for empty JSON array' do
+      schema = create(:table_schema, read_roles: '[]')
+      expect(schema.parsed_read_roles).to eq([])
+    end
+  end
+
+  describe '#parsed_create_roles' do
+    it 'parses the JSON array' do
+      schema = create(:table_schema, create_roles: JSON.generate(%w[member]))
+      expect(schema.parsed_create_roles).to eq(%w[member])
+    end
+  end
+
+  describe '#parsed_update_roles' do
+    it 'parses the JSON array' do
+      schema = create(:table_schema, update_roles: JSON.generate(%w[admin]))
+      expect(schema.parsed_update_roles).to eq(%w[admin])
+    end
+  end
+
+  describe '#parsed_delete_roles' do
+    it 'parses the JSON array' do
+      schema = create(:table_schema, delete_roles: '[]')
+      expect(schema.parsed_delete_roles).to eq([])
+    end
+  end
+
+  describe '#roles_for_action' do
+    let(:schema) do
+      create(:table_schema,
+             read_roles: JSON.generate(%w[member]),
+             create_roles: JSON.generate(%w[admin]),
+             update_roles: JSON.generate(%w[admin member]),
+             delete_roles: '[]')
+    end
+
+    it 'returns correct roles for :read' do
+      expect(schema.roles_for_action(:read)).to eq(%w[member])
+    end
+
+    it 'returns correct roles for :create' do
+      expect(schema.roles_for_action(:create)).to eq(%w[admin])
+    end
+
+    it 'returns correct roles for :update' do
+      expect(schema.roles_for_action(:update)).to eq(%w[admin member])
+    end
+
+    it 'returns correct roles for :delete' do
+      expect(schema.roles_for_action(:delete)).to eq([])
+    end
+
+    it 'accepts string action names' do
+      expect(schema.roles_for_action('read')).to eq(%w[member])
+    end
+
+    it 'returns empty array for invalid action' do
+      expect(schema.roles_for_action(:unknown)).to eq([])
+    end
+  end
+
   describe '#default_state' do
     it 'returns nil for stateless schemas' do
       expect(create(:table_schema).default_state).to be_nil

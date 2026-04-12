@@ -13,7 +13,8 @@ module SOT
 
         def self.call(server_context:, **params)
           user = server_context[:user]
-          MCP::Tool::Response.new([{ type: 'text', text: "You are: #{user.name}" }])
+          role_name = user.role&.name || 'unknown'
+          MCP::Tool::Response.new([{ type: 'text', text: "You are: #{user.name} (role: #{role_name})" }])
         end
       end
     end

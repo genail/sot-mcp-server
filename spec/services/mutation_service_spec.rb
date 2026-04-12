@@ -818,4 +818,36 @@ RSpec.describe SOT::MutationService do
       expect(logs[3].parsed_changes['after']).to be_nil
     end
   end
+
+  describe 'permission enforcement' do
+    let(:restricted_schema) { create(:table_schema, :admin_only) }
+    let(:member_user) { create(:user) }
+    let(:admin_user) { create(:user, :admin) }
+
+    it 'raises PermissionDenied on create for unauthorized user' do
+      expect {
+        described_class.create(schema: restricted_schema, data: { 'title' => 'test' }, user: member_user)
+      }.to raise_error(SOT::PermissionService::PermissionDenied)
+    end
+
+    it 'allows create for admin on restricted schema' do
+      expect {
+        described_class.create(schema: restricted_schema, data: { 'title' => 'test' }, user: admin_user)
+      }.not_to raise_error
+    end
+
+    it 'raises PermissionDenied on update for unauthorized user' do
+      record = described_class.create(schema: restricted_schema, data: { 'title' => 'test' }, user: admin_user)
+      expect {
+        described_class.update(record: record, data: { 'title' => 'hacked' }, user: member_user, expected_version: 1)
+      }.to raise_error(SOT::PermissionService::PermissionDenied)
+    end
+
+    it 'raises PermissionDenied on delete for unauthorized user' do
+      record = described_class.create(schema: restricted_schema, data: { 'title' => 'test' }, user: admin_user)
+      expect {
+        described_class.delete(record: record, user: member_user, expected_version: 1)
+      }.to raise_error(SOT::PermissionService::PermissionDenied)
+    end
+  end
 end

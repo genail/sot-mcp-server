@@ -185,6 +185,73 @@ RSpec.describe SOT::SchemaService do
     end
   end
 
+  describe '.validate_acl!' do
+    it 'accepts valid role names' do
+      expect {
+        described_class.send(:validate_acl!, read_roles: ['admin', 'member'])
+      }.not_to raise_error
+    end
+
+    it 'accepts empty arrays' do
+      expect {
+        described_class.send(:validate_acl!, read_roles: [], create_roles: [])
+      }.not_to raise_error
+    end
+
+    it 'rejects unknown role names' do
+      expect {
+        described_class.send(:validate_acl!, read_roles: ['nonexistent'])
+      }.to raise_error(ArgumentError, /Unknown role/)
+    end
+
+    it 'rejects non-array values' do
+      expect {
+        described_class.send(:validate_acl!, read_roles: 'member')
+      }.to raise_error(ArgumentError, /must be an array/)
+    end
+
+    it 'rejects mixed valid and invalid role names' do
+      expect {
+        described_class.send(:validate_acl!, read_roles: ['member', 'fake'])
+      }.to raise_error(ArgumentError, /Unknown role.*fake/)
+    end
+
+    it 'ignores non-ACL keys in attrs' do
+      expect {
+        described_class.send(:validate_acl!, description: 'test', fields: [])
+      }.not_to raise_error
+    end
+  end
+
+  describe 'ACL passthrough in .create' do
+    it 'persists ACL columns on create' do
+      schema = described_class.create(
+        namespace: 'test', name: 'acl_test',
+        fields: valid_fields,
+        read_roles: ['member'], create_roles: ['admin']
+      )
+      expect(schema.parsed_read_roles).to eq(['member'])
+      expect(schema.parsed_create_roles).to eq(['admin'])
+      expect(schema.parsed_update_roles).to eq([])
+      expect(schema.parsed_delete_roles).to eq([])
+    end
+  end
+
+  describe 'ACL passthrough in .update' do
+    it 'updates ACL columns' do
+      schema = create(:table_schema)
+      described_class.update(schema, read_roles: ['admin'])
+      expect(schema.reload.parsed_read_roles).to eq(['admin'])
+    end
+
+    it 'does not change other ACL columns when updating one' do
+      schema = create(:table_schema)
+      original_create_roles = schema.parsed_create_roles
+      described_class.update(schema, read_roles: ['admin'])
+      expect(schema.reload.parsed_create_roles).to eq(original_create_roles)
+    end
+  end
+
   describe '.list' do
     it 'returns all schemas' do
       create(:table_schema, namespace: 'org', name: 'a')

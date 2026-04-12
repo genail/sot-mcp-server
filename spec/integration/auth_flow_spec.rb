@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 RSpec.describe 'Auth flow', type: :api do
-  let(:admin_pair) { SOT::User.create_with_token(name: 'admin', is_admin: true) }
+  let(:admin_pair) { SOT::User.create_with_token(name: 'admin', role_name: 'admin') }
   let(:admin_token) { admin_pair.last }
 
   let(:user_pair) { SOT::User.create_with_token(name: 'dev') }
@@ -23,7 +23,8 @@ RSpec.describe 'Auth flow', type: :api do
     it 'allows admin to access admin endpoints' do
       post_json '/api/admin/schemas', {
         namespace: 'test', name: 'items',
-        fields: [{ 'name' => 'title', 'type' => 'string' }]
+        fields: [{ 'name' => 'title', 'type' => 'string' }],
+        read_roles: %w[member], create_roles: %w[member], update_roles: %w[member], delete_roles: %w[member]
       }, auth_header(admin_token)
 
       expect(last_response.status).to eq(201)

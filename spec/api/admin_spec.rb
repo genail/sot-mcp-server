@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 RSpec.describe 'Admin API', type: :api do
-  let(:admin_pair) { SOT::User.create_with_token(name: 'admin_api', is_admin: true) }
+  let(:admin_pair) { SOT::User.create_with_token(name: 'admin_api', role_name: 'admin') }
   let(:admin) { admin_pair.first }
   let(:admin_token) { admin_pair.last }
 

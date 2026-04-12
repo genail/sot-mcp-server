@@ -27,11 +27,15 @@ module SOT
         )
 
         def self.call(server_context:, **params)
+          user = server_context[:user]
           dataset = SOT::ActivityLog.order(Sequel.desc(:created_at))
+
+          readable_ids = SOT::PermissionService.readable_schema_ids(user)
+          dataset = dataset.where(schema_id: readable_ids)
 
           if params[:table]
             schema = SOT::SchemaService.resolve(params[:table])
-            unless schema
+            unless schema && SOT::PermissionService.can?(user, schema, :read)
               text = SOT::ErrorFormatter.format(
                 "Table '#{params[:table]}' not found.",
                 hint: 'Use sot_describe_tables to see available tables.'

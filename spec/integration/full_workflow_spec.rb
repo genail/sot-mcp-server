@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 RSpec.describe 'Full workflow', type: :api do
-  let(:admin_pair) { SOT::User.create_with_token(name: 'admin', is_admin: true) }
+  let(:admin_pair) { SOT::User.create_with_token(name: 'admin', role_name: 'admin') }
   let(:admin) { admin_pair.first }
   let(:admin_token) { admin_pair.last }
 
@@ -10,7 +10,7 @@ RSpec.describe 'Full workflow', type: :api do
   let(:user_token) { user_pair.last }
 
   it 'completes end-to-end: schema → create → query → update → activity → delete → audit' do
-    # Step 1: Admin creates a schema
+    # Step 1: Admin creates a schema with member access
     post_json '/api/admin/schemas', {
       namespace: 'org',
       name: 'locks',
@@ -22,7 +22,11 @@ RSpec.describe 'Full workflow', type: :api do
       states: [
         { 'name' => 'locked', 'description' => 'Resource is currently locked' },
         { 'name' => 'unlocked', 'description' => 'Resource is free' }
-      ]
+      ],
+      read_roles: %w[member],
+      create_roles: %w[member],
+      update_roles: %w[member],
+      delete_roles: %w[member]
     }, auth_header(admin_token)
     expect(last_response.status).to eq(201)
 

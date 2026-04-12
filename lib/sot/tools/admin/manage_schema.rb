@@ -56,6 +56,26 @@ module SOT
                   description: { type: 'string' }
                 }
               }
+            },
+            read_roles: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Role names that can read records (empty = admin only)'
+            },
+            create_roles: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Role names that can create records (empty = admin only)'
+            },
+            update_roles: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Role names that can update records (empty = admin only)'
+            },
+            delete_roles: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Role names that can delete records (empty = admin only)'
             }
           },
           required: ['action']
@@ -74,12 +94,14 @@ module SOT
         private
 
         def self.handle_create(params)
+          acl = extract_acl(params)
           schema = SOT::SchemaService.create(
             namespace: params[:namespace],
             name: params[:name],
             description: params[:description],
             fields: params[:fields],
-            states: params[:states]
+            states: params[:states],
+            **acl
           )
 
           MCP::Tool::Response.new([{
@@ -100,6 +122,10 @@ module SOT
           attrs[:states] = params[:states] if params.key?(:states)
           attrs[:namespace] = params[:namespace] if params.key?(:namespace)
           attrs[:name] = params[:name] if params.key?(:name)
+          attrs[:read_roles] = params[:read_roles] if params.key?(:read_roles)
+          attrs[:create_roles] = params[:create_roles] if params.key?(:create_roles)
+          attrs[:update_roles] = params[:update_roles] if params.key?(:update_roles)
+          attrs[:delete_roles] = params[:delete_roles] if params.key?(:delete_roles)
 
           SOT::SchemaService.update(schema, **attrs)
           MCP::Tool::Response.new([{
@@ -108,6 +134,14 @@ module SOT
           }])
         rescue ArgumentError, Sequel::ValidationFailed => e
           MCP::Tool::Response.new([{ type: 'text', text: "Error: #{e.message}" }], error: true)
+        end
+
+        def self.extract_acl(params)
+          acl = {}
+          %i[read_roles create_roles update_roles delete_roles].each do |key|
+            acl[key] = params[key] if params.key?(key)
+          end
+          acl
         end
 
         def self.handle_delete(params)

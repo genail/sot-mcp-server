@@ -26,22 +26,31 @@ module SOT
       end
     end
 
-    def self.create(namespace:, name:, description: nil, fields:, states: nil)
+    ACL_COLUMNS = %i[read_roles create_roles update_roles delete_roles].freeze
+
+    def self.create(namespace:, name:, description: nil, fields:, states: nil, **acl)
       validate_fields!(fields)
       validate_states!(states)
+      validate_acl!(acl)
 
-      Schema.create(
+      attrs = {
         namespace: namespace,
         name: name,
         description: description,
         fields: JSON.generate(normalize_hash_array(fields)),
         states: states ? JSON.generate(normalize_hash_array(states)) : nil
-      )
+      }
+      ACL_COLUMNS.each do |col|
+        attrs[col] = JSON.generate(acl[col]) if acl.key?(col)
+      end
+
+      Schema.create(attrs)
     end
 
     def self.update(schema, **attrs)
       validate_fields!(attrs[:fields]) if attrs.key?(:fields)
       validate_states!(attrs[:states]) if attrs.key?(:states)
+      validate_acl!(attrs)
 
       if attrs.key?(:fields)
         validate_type_changes!(schema, normalize_hash_array(attrs[:fields]))
@@ -53,6 +62,9 @@ module SOT
       updates[:description] = attrs[:description] if attrs.key?(:description)
       updates[:fields] = JSON.generate(normalize_hash_array(attrs[:fields])) if attrs.key?(:fields)
       updates[:states] = (attrs[:states] ? JSON.generate(normalize_hash_array(attrs[:states])) : nil) if attrs.key?(:states)
+      ACL_COLUMNS.each do |col|
+        updates[col] = JSON.generate(attrs[col]) if attrs.key?(col)
+      end
 
       schema.update(updates) unless updates.empty?
       schema
@@ -88,6 +100,21 @@ module SOT
     end
 
     private
+
+    def self.validate_acl!(attrs)
+      valid_role_names = Role.select_map(:name)
+
+      ACL_COLUMNS.each do |col|
+        next unless attrs.key?(col)
+        roles = attrs[col]
+        raise ArgumentError, "#{col} must be an array" unless roles.is_a?(Array)
+
+        unknown = roles - valid_role_names
+        unless unknown.empty?
+          raise ArgumentError, "Unknown role(s) in #{col}: #{unknown.join(', ')}"
+        end
+      end
+    end
 
     def self.validate_type_changes!(schema, new_fields)
       old_fields = schema.parsed_fields

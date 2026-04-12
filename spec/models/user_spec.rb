@@ -20,6 +20,12 @@ RSpec.describe SOT::User do
       expect(user.valid?).to be false
     end
 
+    it 'requires role_id' do
+      user = SOT::User.new(name: 'test', token_hash: BCrypt::Password.create('x'))
+      expect(user.valid?).to be false
+      expect(user.errors[:role_id]).not_to be_empty
+    end
+
     it 'saves a valid user' do
       user = create(:user)
       expect(user.id).not_to be_nil
@@ -62,19 +68,27 @@ RSpec.describe SOT::User do
       expect(token.length).to eq(64)
     end
 
-    it 'creates a non-admin user by default' do
+    it 'creates a member user by default' do
       user, _token = SOT::User.create_with_token(name: 'bob')
-      expect(user.is_admin).to be false
+      expect(user.role.name).to eq('member')
+      expect(user.admin?).to be false
     end
 
     it 'can create an admin user' do
-      user, _token = SOT::User.create_with_token(name: 'admin', is_admin: true)
-      expect(user.is_admin).to be true
+      user, _token = SOT::User.create_with_token(name: 'admin_user', role_name: 'admin')
+      expect(user.role.name).to eq('admin')
+      expect(user.admin?).to be true
     end
 
     it 'generates a token that can be authenticated' do
       user, token = SOT::User.create_with_token(name: 'carol')
       expect(SOT::User.authenticate(token)).to eq(user)
+    end
+
+    it 'raises ArgumentError for nonexistent role' do
+      expect {
+        SOT::User.create_with_token(name: 'bad_role', role_name: 'nonexistent')
+      }.to raise_error(ArgumentError, /not found/)
     end
   end
 

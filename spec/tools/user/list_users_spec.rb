@@ -11,11 +11,11 @@ RSpec.describe SOT::Tools::User::ListUsers, type: :tool do
       expect(text).to include('- bob')
     end
 
-    it 'does not expose admin status' do
-      create(:user, name: 'alice', is_admin: true)
+    it 'does not expose role information' do
+      create(:user, :admin, name: 'alice')
       response = call_tool(described_class)
       text = response_text(response)
-      expect(text).not_to include('admin')
+      expect(text).not_to include('role')
     end
 
     it 'lists the calling user when they are the only one' do

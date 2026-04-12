@@ -25,6 +25,7 @@ module SOT
     end
 
     def self.create(schema:, data:, state: nil, user:)
+      PermissionService.authorize!(user, schema, :create)
       data = data.transform_keys(&:to_s) if data.is_a?(Hash)
       validate_data!(schema, data)
       data = coerce_data!(schema, data)
@@ -59,6 +60,7 @@ module SOT
 
     def self.update(record:, data: nil, state: nil, preconditions: {}, user:, replace_data: false, append_data: nil, edit_data: nil, expected_version: nil)
       schema = record.schema
+      PermissionService.authorize!(user, schema, :update)
 
       raise ValidationError, "Cannot set state on a stateless table" if state && !schema.stateful?
       raise ValidationError, "data must be a Hash" if data && !data.is_a?(Hash)
@@ -158,6 +160,7 @@ module SOT
 
     def self.delete(record:, preconditions: {}, user:, expected_version: nil)
       schema = record.schema
+      PermissionService.authorize!(user, schema, :delete)
 
       raise ValidationError, "version is required for delete" if expected_version.nil?
 
