@@ -29,6 +29,7 @@ require_relative '../lib/sot/services/schema_service'
 require_relative '../lib/sot/services/query_service'
 require_relative '../lib/sot/services/mutation_service'
 require_relative '../lib/sot/services/permission_service'
+require_relative '../lib/sot/services/snippet_service'
 require_relative '../lib/sot/services/user_service'
 
 # Load MCP tools (conditionally)

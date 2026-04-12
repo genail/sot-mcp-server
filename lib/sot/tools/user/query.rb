@@ -42,6 +42,18 @@ module SOT
               ],
               description: 'Text search across record data. Use 3+ specific terms for best results. Results ranked by relevance (most matching terms first). Case-insensitive.'
             },
+            full_fields: {
+              type: 'array', items: { type: 'string' },
+              description: 'Fields to return in full (e.g. title, tags, status). Recommended for short fields. Use sot_describe_tables to see field names.'
+            },
+            snippet_fields: {
+              type: 'array', items: { type: 'string' },
+              description: 'Fields to return as match snippets only (requires search). Each snippet shows surrounding context around the match with its character offset. Use sot_read to read more around an offset. Recommended for long content fields. Up to 3 snippets per field.'
+            },
+            snippet_context: {
+              type: 'integer',
+              description: 'Characters of context before/after each match in snippet_fields (default 100)'
+            },
             state: { type: 'string', description: 'Filter by state' },
             limit: { type: 'integer', description: 'Max results (default 100)' },
             offset: { type: 'integer', description: 'Pagination offset (default 0)' }
@@ -121,6 +133,35 @@ module SOT
             end
           end
 
+          # Validate full_fields / snippet_fields
+          full_fields = params[:full_fields]
+          snippet_fields = params[:snippet_fields]
+          snippet_context = params[:snippet_context] || 100
+
+          if snippet_fields && !params[:search]
+            return error_response("snippet_fields requires a search term. Use full_fields for queries without search.")
+          end
+
+          if full_fields && snippet_fields
+            overlap = full_fields & snippet_fields
+            unless overlap.empty?
+              return error_response("Field(s) #{overlap.join(', ')} cannot be in both full_fields and snippet_fields.")
+            end
+          end
+
+          all_field_params = (Array(full_fields) + Array(snippet_fields)).uniq
+          unless all_field_params.empty?
+            schemas.each do |s|
+              unknown = all_field_params - s.all_field_names
+              unless unknown.empty?
+                return error_response(
+                  "Field(s) #{unknown.join(', ')} not found in table '#{s.full_name}'.",
+                  schema: s
+                )
+              end
+            end
+          end
+
           schema_lookup = schemas.each_with_object({}) { |s, h| h[s.id] = s.full_name }
           schema_ids = schemas.map(&:id)
           search = params[:search]
@@ -144,11 +185,23 @@ module SOT
             }])
           end
 
+          use_field_mode = full_fields || snippet_fields
+          search_terms = search ? SOT::QueryService.normalize_search(search) : []
           multi_table = schemas.length > 1
+
           lines = records.map do |r|
             state_info = r.state ? " [#{r.state}]" : ''
             table_prefix = multi_table ? " in #{schema_lookup[r.schema_id]}" : ''
-            "Record ##{r.id} (v#{r.current_version})#{state_info}#{table_prefix}: #{r.data}"
+
+            if use_field_mode
+              format_record_with_fields(r, state_info, table_prefix,
+                                        full_fields: full_fields || [],
+                                        snippet_fields: snippet_fields || [],
+                                        search_terms: search_terms,
+                                        snippet_context: snippet_context)
+            else
+              "Record ##{r.id} (v#{r.current_version})#{state_info}#{table_prefix}: #{r.data}"
+            end
           end
 
           count = SOT::QueryService.count(schema_ids, filters: filters, search: search, state: params[:state])
@@ -164,6 +217,38 @@ module SOT
         end
 
         private
+
+        def self.format_record_with_fields(record, state_info, table_prefix,
+                                            full_fields:, snippet_fields:,
+                                            search_terms:, snippet_context:)
+          data = record.parsed_data
+          parts = ["Record ##{record.id} (v#{record.current_version})#{state_info}#{table_prefix}:"]
+
+          full_fields.each do |field|
+            value = data[field]
+            parts << "  #{field}: #{value}" unless value.nil?
+          end
+
+          if snippet_fields.any? && search_terms.any?
+            snippets = SOT::SnippetService.extract(
+              data, search_terms, fields: snippet_fields, context: snippet_context
+            )
+
+            snippet_fields.each do |field|
+              matches = snippets[field] || []
+              if matches.empty?
+                parts << "  #{field}: (no match)"
+              else
+                matches.each do |m|
+                  terms_label = m[:terms] ? m[:terms].join(', ') : m[:term]
+                  parts << "  #{field} [match at offset #{m[:offset]}, terms: #{terms_label}]: ...#{m[:snippet]}..."
+                end
+              end
+            end
+          end
+
+          parts.join("\n")
+        end
 
         def self.error_response(message, schema: nil, hint: nil)
           text = SOT::ErrorFormatter.format(message, schema: schema, hint: hint)

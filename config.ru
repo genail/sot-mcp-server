@@ -8,6 +8,7 @@ USER_TOOLS = [
   SOT::Tools::User::FeedbackTool,
   SOT::Tools::User::ListUsers,
   SOT::Tools::User::Whoami,
+  SOT::Tools::User::Read,
 ].freeze
 
 ADMIN_TOOLS = [
@@ -20,6 +21,7 @@ ADMIN_TOOLS = [
   SOT::Tools::User::ActivityLogTool,
   SOT::Tools::User::ListUsers,
   SOT::Tools::User::Whoami,
+  SOT::Tools::User::Read,
 ].freeze
 
 app = Rack::Builder.new do
