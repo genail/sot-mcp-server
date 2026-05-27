@@ -118,16 +118,101 @@ RSpec.describe SOT::SchemaService do
       expect(schema.reload.description).to eq('New description')
     end
 
-    it 'updates fields' do
-      new_fields = [{ 'name' => 'body', 'type' => 'text', 'required' => false }]
-      described_class.update(schema, fields: new_fields)
-      expect(schema.reload.parsed_fields.first['name']).to eq('body')
-    end
-
     it 'validates fields on update' do
       expect {
         described_class.update(schema, fields: [])
       }.to raise_error(ArgumentError)
+    end
+
+    context 'field merge semantics' do
+      it 'appends new fields without affecting existing ones' do
+        described_class.update(schema, fields: [
+          { 'name' => 'notes', 'type' => 'text', 'description' => 'Notes' }
+        ])
+        schema.reload
+        names = schema.parsed_fields.map { |f| f['name'] }
+        expect(names).to eq(%w[title count notes])
+      end
+
+      it 'updates properties of existing fields' do
+        described_class.update(schema, fields: [
+          { 'name' => 'title', 'type' => 'string', 'description' => 'New Title Desc', 'required' => false }
+        ])
+        schema.reload
+        title_field = schema.parsed_fields.find { |f| f['name'] == 'title' }
+        expect(title_field['description']).to eq('New Title Desc')
+        expect(title_field['required']).to eq(false)
+        expect(schema.parsed_fields.map { |f| f['name'] }).to include('count')
+      end
+
+      it 'preserves existing fields not included in the update' do
+        described_class.update(schema, fields: [
+          { 'name' => 'title', 'type' => 'string', 'required' => true }
+        ])
+        schema.reload
+        names = schema.parsed_fields.map { |f| f['name'] }
+        expect(names).to eq(%w[title count])
+      end
+
+      it 'removes fields listed in confirm_delete_fields' do
+        described_class.update(schema, confirm_delete_fields: ['count'])
+        schema.reload
+        names = schema.parsed_fields.map { |f| f['name'] }
+        expect(names).to eq(%w[title])
+      end
+
+      it 'errors when confirm_delete_fields lists nonexistent fields' do
+        expect {
+          described_class.update(schema, confirm_delete_fields: ['nonexistent'])
+        }.to raise_error(ArgumentError, /nonexistent/)
+      end
+
+      it 'returns field change details' do
+        result = described_class.update(schema, fields: [
+          { 'name' => 'title', 'type' => 'string', 'description' => 'Updated Title', 'required' => true },
+          { 'name' => 'notes', 'type' => 'text', 'description' => 'Some notes' }
+        ])
+        expect(result).to include(:field_changes)
+        expect(result[:field_changes][:added].map { |f| f['name'] }).to eq(['notes'])
+        expect(result[:field_changes][:updated].any? { |c| c[:name] == 'title' }).to be true
+      end
+
+      it 'returns no field changes when only non-field attrs update' do
+        result = described_class.update(schema, description: 'Changed')
+        expect(result[:field_changes]).to be_nil
+      end
+    end
+  end
+
+  describe '.reorder_fields' do
+    let(:schema) { create(:table_schema) }
+
+    it 'reorders fields' do
+      described_class.reorder_fields(schema, %w[count title])
+      schema.reload
+      expect(schema.parsed_fields.map { |f| f['name'] }).to eq(%w[count title])
+    end
+
+    it 'errors when field names are missing from the list' do
+      expect {
+        described_class.reorder_fields(schema, %w[title])
+      }.to raise_error(ArgumentError, /count/)
+    end
+
+    it 'errors when extra field names are provided' do
+      expect {
+        described_class.reorder_fields(schema, %w[title count extra])
+      }.to raise_error(ArgumentError, /extra/)
+    end
+
+    it 'returns changed: false when order is identical' do
+      result = described_class.reorder_fields(schema, %w[title count])
+      expect(result[:changed]).to be false
+    end
+
+    it 'returns changed: true when order differs' do
+      result = described_class.reorder_fields(schema, %w[count title])
+      expect(result[:changed]).to be true
     end
   end
 

@@ -213,9 +213,9 @@ module SOT
         update_attrs[key.to_sym] = data[key] if data.key?(key)
       end
 
-      updated = SOT::SchemaService.update(schema, **update_attrs)
+      result = SOT::SchemaService.update(schema, **update_attrs)
 
-      json(schema: serialize_schema(updated))
+      json(schema: serialize_schema(result[:schema]))
     rescue ArgumentError => e
       halt 422, json(error: e.message)
     end

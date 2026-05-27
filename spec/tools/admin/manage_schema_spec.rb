@@ -93,6 +93,107 @@ RSpec.describe SOT::Tools::Admin::ManageSchema, type: :tool do
     end
   end
 
+  describe 'update action with field merge' do
+    before do
+      call_tool(described_class, user: admin,
+                action: 'create', namespace: 'org', name: 'tasks',
+                fields: [
+                  { 'name' => 'title', 'type' => 'string', 'description' => 'Task title', 'required' => true },
+                  { 'name' => 'priority', 'type' => 'integer', 'description' => 'Priority level' }
+                ])
+    end
+
+    it 'adds a new field via merge' do
+      response = call_tool(described_class, user: admin,
+                           action: 'update', table: 'org.tasks',
+                           fields: [{ 'name' => 'notes', 'type' => 'text', 'description' => 'Notes' }])
+      expect(response_error?(response)).to be false
+      text = response_text(response)
+      expect(text).to include('Added')
+      expect(text).to include('notes')
+      schema = SOT::Schema.first(namespace: 'org', name: 'tasks')
+      expect(schema.parsed_fields.length).to eq(3)
+    end
+
+    it 'reports updated field properties in response' do
+      response = call_tool(described_class, user: admin,
+                           action: 'update', table: 'org.tasks',
+                           fields: [{ 'name' => 'title', 'type' => 'string', 'description' => 'Updated title desc', 'required' => true }])
+      expect(response_error?(response)).to be false
+      text = response_text(response)
+      expect(text).to include('Updated')
+      expect(text).to include('title')
+    end
+
+    it 'removes fields with confirm_delete_fields and shows revert info' do
+      response = call_tool(described_class, user: admin,
+                           action: 'update', table: 'org.tasks',
+                           confirm_delete_fields: ['priority'])
+      expect(response_error?(response)).to be false
+      text = response_text(response)
+      expect(text).to include('Removed')
+      expect(text).to include('priority')
+      expect(text).to include('integer')
+      schema = SOT::Schema.first(namespace: 'org', name: 'tasks')
+      expect(schema.parsed_fields.length).to eq(1)
+    end
+
+    it 'errors when confirm_delete_fields lists nonexistent fields' do
+      response = call_tool(described_class, user: admin,
+                           action: 'update', table: 'org.tasks',
+                           confirm_delete_fields: ['nonexistent'])
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('nonexistent')
+    end
+  end
+
+  describe 'reorder_fields action' do
+    before do
+      call_tool(described_class, user: admin,
+                action: 'create', namespace: 'org', name: 'tasks',
+                fields: [
+                  { 'name' => 'title', 'type' => 'string', 'required' => true },
+                  { 'name' => 'priority', 'type' => 'integer' },
+                  { 'name' => 'notes', 'type' => 'text' }
+                ])
+    end
+
+    it 'reorders fields successfully' do
+      response = call_tool(described_class, user: admin,
+                           action: 'reorder_fields', table: 'org.tasks',
+                           field_order: %w[notes title priority])
+      expect(response_error?(response)).to be false
+      text = response_text(response)
+      expect(text).to include('Reordered')
+      schema = SOT::Schema.first(namespace: 'org', name: 'tasks')
+      expect(schema.parsed_fields.map { |f| f['name'] }).to eq(%w[notes title priority])
+    end
+
+    it 'errors when field names do not match' do
+      response = call_tool(described_class, user: admin,
+                           action: 'reorder_fields', table: 'org.tasks',
+                           field_order: %w[title priority])
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('notes')
+    end
+
+    it 'reports no changes when order is identical' do
+      response = call_tool(described_class, user: admin,
+                           action: 'reorder_fields', table: 'org.tasks',
+                           field_order: %w[title priority notes])
+      expect(response_error?(response)).to be false
+      expect(response_text(response)).to include('No changes')
+    end
+
+    it 'errors when table not found' do
+      response = call_tool(described_class, user: admin,
+                           action: 'reorder_fields', table: 'nonexistent',
+                           field_order: %w[title])
+      expect(response_error?(response)).to be true
+      expect(response_text(response)).to include('not found')
+    end
+  end
+
   describe 'delete action' do
     before do
       call_tool(described_class, user: admin,
