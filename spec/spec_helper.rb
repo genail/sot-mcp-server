@@ -21,6 +21,8 @@ require_relative '../lib/sot/models/schema'
 require_relative '../lib/sot/models/record'
 require_relative '../lib/sot/models/activity_log'
 require_relative '../lib/sot/models/feedback'
+require_relative '../lib/sot/models/webhook'
+require_relative '../lib/sot/models/webhook_log'
 
 # Load services
 require_relative '../lib/sot/services/error_formatter'
@@ -31,6 +33,7 @@ require_relative '../lib/sot/services/mutation_service'
 require_relative '../lib/sot/services/permission_service'
 require_relative '../lib/sot/services/snippet_service'
 require_relative '../lib/sot/services/user_service'
+require_relative '../lib/sot/services/webhook_service'
 
 # Load MCP tools (conditionally)
 require 'mcp'

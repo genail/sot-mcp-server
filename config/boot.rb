@@ -13,6 +13,8 @@ require_relative '../lib/sot/models/schema'
 require_relative '../lib/sot/models/record'
 require_relative '../lib/sot/models/activity_log'
 require_relative '../lib/sot/models/feedback'
+require_relative '../lib/sot/models/webhook'
+require_relative '../lib/sot/models/webhook_log'
 
 # Services
 require_relative '../lib/sot/services/error_formatter'
@@ -23,6 +25,7 @@ require_relative '../lib/sot/services/mutation_service'
 require_relative '../lib/sot/services/permission_service'
 require_relative '../lib/sot/services/user_service'
 require_relative '../lib/sot/services/snippet_service'
+require_relative '../lib/sot/services/webhook_service'
 
 # MCP Tools
 require 'mcp'
@@ -34,10 +37,14 @@ require_relative '../lib/sot/tools/user/feedback'
 require_relative '../lib/sot/tools/user/list_users'
 require_relative '../lib/sot/tools/user/whoami'
 require_relative '../lib/sot/tools/user/read'
+require_relative '../lib/sot/tools/user/list_webhooks'
+require_relative '../lib/sot/tools/user/call_webhook'
 require_relative '../lib/sot/tools/admin/manage_schema'
 require_relative '../lib/sot/tools/admin/manage_roles'
 require_relative '../lib/sot/tools/admin/manage_users'
 require_relative '../lib/sot/tools/admin/view_feedback'
+require_relative '../lib/sot/tools/admin/manage_webhooks'
+require_relative '../lib/sot/tools/admin/webhook_logs'
 
 # Middleware
 require_relative '../lib/sot/middleware/downcase_headers'
