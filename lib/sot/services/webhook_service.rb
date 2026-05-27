@@ -16,6 +16,7 @@ module SOT
     }.freeze
 
     def self.render_template(template, values)
+      values = values.transform_keys(&:to_s)
       placeholders = template.scan(/\{\{(\w+)\}\}/).flatten.uniq
       missing = placeholders - values.keys
       raise ValidationError, "Missing variable values: #{missing.join(', ')}" if missing.any?

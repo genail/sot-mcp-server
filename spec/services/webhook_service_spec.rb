@@ -20,6 +20,13 @@ RSpec.describe SOT::WebhookService do
       expect(result).to eq('{"a": "hello", "b": "hello"}')
     end
 
+    it 'handles symbol-keyed values from MCP params' do
+      template = '{"text": "{{user_name}} reported {{issue}}"}'
+      values = { user_name: 'Alice', issue: 'Bug #42' }
+      result = described_class.render_template(template, values)
+      expect(result).to eq('{"text": "Alice reported Bug #42"}')
+    end
+
     it 'raises on missing variable values' do
       template = '{"text": "{{user_name}}"}'
       values = {}
